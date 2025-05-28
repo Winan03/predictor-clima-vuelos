@@ -10,6 +10,10 @@ from entrenamiento import ModeloClimaVuelos
 
 app = Flask(__name__)
 
+# Habilita CORS para todos los dominios
+from flask_cors import CORS
+CORS(app)
+
 contador_predicciones = 0
 retrasos_evitados = 0
 ahorro_estimado = 0
