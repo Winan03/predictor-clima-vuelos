@@ -50,6 +50,17 @@ def cargar_datos_s3(url_dataset):
         print(f"Error cargando datos desde S3: {e}")
         return None
 
+def generar_etiqueta_retraso(df):
+    score = (
+        0.3 * (df['precipitacion'] > 5) +
+        0.2 * (df['viento_velocidad'] > 25) +
+        0.1 * ((df['temperatura'] < 5) | (df['temperatura'] > 35)) +
+        0.2 * (df['presion'] < 1000) +
+        0.2 * (df['visibilidad'] < 5)
+    )
+    return (score > 0.5).astype(int)
+
+
 def adaptar_dataset_real(df):
     """
     Adapta el dataset meteorológico real al formato esperado por el modelo
@@ -134,55 +145,11 @@ def adaptar_dataset_real(df):
     else:
         df_adaptado['nubosidad'] = 40  # Valor por defecto
 
-    # Simular retrasos con lógica basada en condiciones climáticas REALES
-    retrasos = []
-    for _, fila in df_adaptado.iterrows():
-        prob = 0.03  # Probabilidad base baja (3%)
-        
-        # Factores de riesgo basados en datos reales
-        if pd.notna(fila.get('precipitacion', 0)) and fila.get('precipitacion', 0) > 1:
-            prob += 0.15  # Lluvia ligera
-        if pd.notna(fila.get('precipitacion', 0)) and fila.get('precipitacion', 0) > 5:
-            prob += 0.25  # Lluvia fuerte
-        if pd.notna(fila.get('precipitacion', 0)) and fila.get('precipitacion', 0) > 10:
-            prob += 0.3   # Lluvia muy fuerte
-            
-        if pd.notna(fila.get('viento_velocidad', 0)) and fila.get('viento_velocidad', 0) > 15:
-            prob += 0.1   # Viento moderado
-        if pd.notna(fila.get('viento_velocidad', 0)) and fila.get('viento_velocidad', 0) > 25:
-            prob += 0.2   # Viento fuerte
-        if pd.notna(fila.get('viento_velocidad', 0)) and fila.get('viento_velocidad', 0) > 35:
-            prob += 0.3   # Viento muy fuerte
-            
-        # Temperaturas extremas
-        if pd.notna(fila.get('temperatura', 20)):
-            temp = fila.get('temperatura', 20)
-            if temp < 5 or temp > 35:
-                prob += 0.15
-            if temp < 0 or temp > 40:
-                prob += 0.25
-        
-        # Presión atmosférica baja (tormentas)
-        if pd.notna(fila.get('presion', 1013.25)) and fila.get('presion', 1013.25) < 1005:
-            prob += 0.1
-        if pd.notna(fila.get('presion', 1013.25)) and fila.get('presion', 1013.25) < 995:
-            prob += 0.2
-            
-        # Baja visibilidad estimada
-        if fila.get('visibilidad', 12) < 8:
-            prob += 0.2
-        if fila.get('visibilidad', 12) < 5:
-            prob += 0.3
-            
-        # Limitar probabilidad máxima
-        prob = min(prob, 0.8)
-        
-        retrasos.append(int(np.random.rand() < prob))
+    # LÓGICA determinista basada en condiciones climáticas
+    df_adaptado['retraso_vuelo'] = generar_etiqueta_retraso(df_adaptado)
 
-    df_adaptado['retraso_vuelo'] = retrasos
-    
     print(f"Dataset adaptado: {len(df_adaptado)} registros")
-    print(f"Tasa de retrasos simulada: {np.mean(retrasos)*100:.1f}%")
+    print(f"Tasa de retrasos generada: {df_adaptado['retraso_vuelo'].mean()*100:.1f}%")
     print(f"Columnas disponibles: {list(df_adaptado.columns)}")
 
     return df_adaptado
@@ -306,9 +273,12 @@ def preparar_features(df, columnas_target=['retraso_vuelo'], scaler=None, label_
         ]
 
         # Si es modo predicción y tenemos scaler, usar sus feature names
-        if scaler is not None and hasattr(scaler, 'feature_names_in_'):
-            columnas_esperadas = list(scaler.feature_names_in_)
-            print(f"Usando columnas del scaler entrenado: {columnas_esperadas}")
+        if scaler is not None:
+            if hasattr(scaler, 'feature_names_in_'):
+                columnas_esperadas = list(scaler.feature_names_in_)
+                print(f"Usando columnas del scaler entrenado: {columnas_esperadas}")
+            else:
+                print("⚠️ El scaler no tiene 'feature_names_in_'. Usando columnas por defecto.")
 
         # Asegurar que tenemos todas las columnas esperadas
         for col in columnas_esperadas:
@@ -563,6 +533,17 @@ def obtener_datos_clima_reales(ciudad, fecha=None, hora=None):
         dt_utc = datetime.fromtimestamp(timestamp, tz=timezone.utc) if timestamp else None
         dt_peru = dt_utc - timedelta(hours=5) if dt_utc else None
 
+        # === 🔍 TRAZABILIDAD (para verificar que corresponde con lo pedido) ===
+        print("\n🧪 VERIFICACIÓN DE PRONÓSTICO")
+        print(f"🌍 Ciudad solicitada: {ciudad}")
+        print(f"📆 Fecha objetivo enviada: {fecha}")
+        print(f"⏰ Hora objetivo enviada: {hora}")
+        print(f"🕒 Fecha/hora solicitada: {target_dt}")
+        print(f"🕓 Fecha/hora real del pronóstico (UTC): {dt_utc}")
+        print(f"🕓 Fecha/hora real del pronóstico (Perú): {dt_peru}")
+        print(f"📦 Datos del bloque más cercano:")
+        print(json.dumps(block, indent=2))
+
         clima = {
             'temperatura': round(temperatura, 1),
             'humedad': humedad,
@@ -572,8 +553,13 @@ def obtener_datos_clima_reales(ciudad, fecha=None, hora=None):
             'nubosidad': nubosidad,
             'precipitacion': precipitacion,
             'fecha_observacion_utc': dt_utc.strftime('%Y-%m-%d %H:%M:%S UTC') if dt_utc else 'N/A',
-            'fecha_observacion_peru': dt_peru.strftime('%Y-%m-%d %H:%M:%S (UTC-5)') if dt_peru else 'N/A'
+            'fecha_observacion_peru': dt_peru.strftime('%Y-%m-%d %H:%M:%S (UTC-5)') if dt_peru else 'N/A',
+            'fecha_predicha_openweather_utc': dt_utc.strftime('%Y-%m-%d %H:%M:%S') if dt_utc else 'N/A',
+            'ciudad': ciudad,
+            'fecha_solicitada': fecha,
+            'hora_solicitada': hora
         }
+
         print("🔍 JSON recibido de OpenWeather:", json.dumps(block, indent=2))
 
         return clima

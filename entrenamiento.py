@@ -64,16 +64,9 @@ class ModeloClimaVuelos:
 
             clase_counts = df_total['retraso_vuelo'].value_counts()
 
-            # Asegurar al menos 15 ejemplos positivos si no existen suficientes
-            if 1 not in clase_counts or clase_counts[1] < 15:
-                print("⚠️ Reforzando datos: Generando al menos 15 ejemplos positivos de 'retraso_vuelo'")
-                indices_negativos = df_total[df_total['retraso_vuelo'] == 0].index
-                if len(indices_negativos) >= 15:
-                    indices_a_cambiar = np.random.choice(indices_negativos, size=15, replace=False)
-                    df_total.loc[indices_a_cambiar, 'retraso_vuelo'] = 1
-                else:
-                    # Si no hay suficientes negativos, cambiar todos los disponibles
-                    df_total.loc[indices_negativos, 'retraso_vuelo'] = 1
+            # Solo advertir si hay muy pocos positivos
+            if 1 not in clase_counts or clase_counts[1] < 10:
+                print("⚠️ Advertencia: Muy pocos ejemplos positivos de retrasos. Esto puede afectar el recall del modelo.")
 
             # Verificar nuevamente que haya al menos 2 muestras por clase
             clase_counts_final = df_total['retraso_vuelo'].value_counts()
@@ -232,7 +225,7 @@ class ModeloClimaVuelos:
         self._analizar_importancia_features(columnas_features)
 
         # Análisis de importancia de nuevas variables climáticas
-        self.analizar_aporte_nuevas_features()
+        analizar_aporte_nuevas_features(self)
     
     def _evaluar_modelo_detallado(self, X_test, y_test, nombre_modelo):
         """Evaluación detallada del mejor modelo"""
@@ -316,41 +309,45 @@ class ModeloClimaVuelos:
     def predecir(self, datos_nuevos):
         """
         Realiza predicciones con el modelo entrenado
-        
+
         Args:
             datos_nuevos (pandas.DataFrame): Datos para predecir
-            
+
         Returns:
             dict: Diccionario con predicciones y probabilidades
         """
         if self.modelo is None:
             print("No hay modelo entrenado. Entrena o carga un modelo primero.")
             return None
-        
+
         try:
-            # Preparar datos nuevos usando los mismos encoders y scaler
-            X_nuevos, _, _, _ = preparar_features(
-                datos_nuevos, 
-                columnas_target=[],  # No hay columnas target en predicción
-                scaler=self.scaler, 
+            # Usar preparar_features y tomar solo el primer valor (X_nuevos)
+            resultado = preparar_features(
+                datos_nuevos,
+                columnas_target=[],  # No hay columna target en predicción
+                scaler=self.scaler,
                 label_encoders=self.label_encoders
             )
-            
-            if X_nuevos is not None:
-                predicciones = self.modelo.predict(X_nuevos)
-                probabilidades = self.modelo.predict_proba(X_nuevos)[:, 1]
-                
-                return {
-                    'predicciones': predicciones,
-                    'probabilidades': probabilidades
-                }
-            else:
-                print("Error preparando datos para predicción")
+
+            if not resultado or len(resultado) < 1:
+                print("❌ No se pudo preparar los datos para predicción.")
                 return None
-                
+
+            # Solo nos interesa X_nuevos para predecir
+            X_nuevos = resultado[0]
+
+            predicciones = self.modelo.predict(X_nuevos)
+            probabilidades = self.modelo.predict_proba(X_nuevos)[:, 1]
+
+            return {
+                'predicciones': predicciones,
+                'probabilidades': probabilidades
+            }
+
         except Exception as e:
             print(f"Error en predicción: {str(e)}")
             return None
+
     
     def predecir_probabilidad(self, datos_nuevos):
         """

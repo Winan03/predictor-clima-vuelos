@@ -324,6 +324,108 @@
             margin: 20px 0;
         }
 
+        .success-message {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #4caf50;
+            margin: 20px 0;
+        }
+
+        .warning-message {
+            background: #fff3e0;
+            color: #ef6c00;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #ff9800;
+            margin: 20px 0;
+        }
+
+        .agregar-btn {
+            width: 100%;
+            background: #ffffff;
+            color: #4a6cf7;
+            border: 2px dashed #4a6cf7;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .agregar-btn:hover {
+            background: #f1f3f5;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(74, 108, 247, 0.15);
+        }
+
+        .vuelo-group {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e1e5e9;
+            position: relative;
+        }
+
+        .vuelo-group.predicted {
+            border-color: #4caf50;
+            background: #f8fff8;
+        }
+
+        .vuelo-group h3 {
+            color: #4a6cf7;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .vuelo-group hr {
+            border: none;
+            height: 1px;
+            background: #e1e5e9;
+            margin: 15px 0;
+        }
+
+        .prediction-status {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .prediction-status.predicted {
+            background: #4caf50;
+            color: white;
+        }
+
+        .remove-flight-btn {
+            position: absolute;
+            top: 10px;
+            right: 50px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            transition: all 0.3s ease;
+        }
+
+        .remove-flight-btn:hover {
+            background: #d32f2f;
+            transform: scale(1.1);
+        }
+
         @media (max-width: 768px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -350,30 +452,45 @@
 
         <div class="main-content">
             <div class="form-section">
-                <h2>Datos del Vuelo</h2>
                 <form id="prediction-form">
-                    <div class="form-group">
-                        <label for="ciudad">Ciudad de Destino:</label>
-                        <select id="ciudad" name="ciudad" required>
-                            <option value="">Seleccionar ciudad...</option>
-                            <option value="lima">Lima</option>
-                            <option value="arequipa">Arequipa</option>
-                            <option value="trujillo">Trujillo</option>
-                            <option value="piura">Piura</option>
-                            <option value="cajamarca">Cajamarca</option>
-                            <option value="puno">Puno</option>
-                        </select>
+                    <div id="vuelos-container">
+                        <div class="vuelo-group" data-index="0">
+                            <h3>Vuelo 1</h3>
+                            <div class="form-group">
+                                <label>Ciudad de Destino:</label>
+                                <select id="ciudad" name="ciudad" required>
+                                    <option value="">Seleccionar ciudad...</option>
+                                    <option value="lima">Lima</option>
+                                    <option value="arequipa">Arequipa</option>
+                                    <option value="trujillo">Trujillo</option>
+                                    <option value="piura">Piura</option>
+                                    <option value="cajamarca">Cajamarca</option>
+                                    <option value="puno">Puno</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha del Vuelo:</label>
+                                <input type="date" id="fecha" name="fecha" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Hora del Vuelo:</label>
+                                <input type="time" id="hora" name="hora" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Número estimado de pasajeros:</label>
+                                <input type="number" id="pasajeros" name="pasajeros" min="1" value="120" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Costo estimado por pasajero (USD):</label>
+                                <input type="number" id="costo" name="costo" min="1" value="100" required>
+                            </div>
+                            <hr>
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label for="fecha">Fecha del Vuelo:</label>
-                        <input type="date" id="fecha" name="fecha" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="hora">Hora del Vuelo:</label>
-                        <input type="time" id="hora" name="hora" required>
-                    </div>
+                    
+                    <button type="button" class="agregar-btn" onclick="agregarVuelo()">
+                        + Agregar otro vuelo
+                    </button>
 
                     <button type="submit" class="predict-btn" id="predict-btn">
                         <span class="loading-spinner" id="loading-spinner"></span>
@@ -434,32 +551,141 @@
     </div>
 
     <script>
+        // Variables globales para control de predicciones
+        const vuelosPredichos = new Set();
+        let contadorVuelos = 0;
+        let ahorroAcumulado = 0;
+        let prediccionesRealizadas = 0;
+    
         // Configurar fecha mínima como hoy
-        document.getElementById('fecha').min = new Date().toISOString().split('T')[0];
-
-        // Cargar estadísticas al iniciar
-        loadStats();
-
+        document.addEventListener('DOMContentLoaded', function() {
+            const fechaInput = document.getElementById('fecha');
+            if (fechaInput) {
+                fechaInput.min = new Date().toISOString().split('T')[0];
+            }
+            
+            // Cargar estadísticas al iniciar
+            loadStats();
+        });
+    
+        // Función para generar datos aleatorios realistas sin repetir horas
+        function generarDatosVuelo() {
+            const ciudades = ['lima', 'arequipa', 'trujillo', 'piura', 'cajamarca', 'puno'];
+            const pasajeros = [80, 95, 110, 120, 135, 150, 165, 180];
+            const costosBase = [85, 95, 100, 110, 120, 135, 150];
+            
+            // Obtener todas las horas ya usadas en vuelos existentes
+            const horasUsadas = new Set();
+            const vuelosGroups = document.querySelectorAll('.vuelo-group');
+            vuelosGroups.forEach(group => {
+                const horaInput = group.querySelector('input[name="hora"]');
+                if (horaInput && horaInput.value) {
+                    horasUsadas.add(horaInput.value);
+                }
+            });
+    
+            // Generar hora única (horarios comerciales realistas: 6 AM - 11 PM)
+            let horaFormateada;
+            let intentos = 0;
+            do {
+                const hora = Math.floor(Math.random() * 17) + 6; // 6-22 horas
+                const minuto = Math.random() < 0.5 ? 0 : 30; // Solo :00 o :30
+                horaFormateada = `${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`;
+                intentos++;
+            } while (horasUsadas.has(horaFormateada) && intentos < 50);
+    
+            // Si después de 50 intentos no encuentra hora única, usar minutos aleatorios
+            if (horasUsadas.has(horaFormateada)) {
+                const hora = Math.floor(Math.random() * 17) + 6;
+                const minuto = Math.floor(Math.random() * 60);
+                horaFormateada = `${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`;
+            }
+            
+            return {
+                ciudad: ciudades[Math.floor(Math.random() * ciudades.length)],
+                pasajeros: pasajeros[Math.floor(Math.random() * pasajeros.length)],
+                costo: costosBase[Math.floor(Math.random() * costosBase.length)],
+                hora: horaFormateada
+            };
+        }
+    
+        // Función para crear identificador único de vuelo
+        function crearIdVuelo(ciudad, fecha, hora) {
+            return `${ciudad}-${fecha}-${hora}`;
+        }
+    
+        // Función para verificar si un vuelo ya fue predicho
+        function yaFuePredicho(ciudad, fecha, hora) {
+            const id = crearIdVuelo(ciudad, fecha, hora);
+            return vuelosPredichos.has(id);
+        }
+    
+        // Función para marcar vuelo como predicho
+        function marcarComoPredicho(ciudad, fecha, hora, vueloGroup) {
+            const id = crearIdVuelo(ciudad, fecha, hora);
+            vuelosPredichos.add(id);
+            
+            // Agregar indicador visual
+            vueloGroup.classList.add('predicted');
+            const status = document.createElement('div');
+            status.className = 'prediction-status predicted';
+            status.textContent = '✓ Predicho';
+            vueloGroup.appendChild(status);
+        }
+    
         // Manejar envío del formulario
         document.getElementById('prediction-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const formData = {
-                ciudad: document.getElementById('ciudad').value,
-                fecha: document.getElementById('fecha').value,
-                hora: document.getElementById('hora').value
-            };
-
-            // Validar datos
-            if (!formData.ciudad || !formData.fecha || !formData.hora) {
-                showError('Por favor, complete todos los campos');
+            // Obtener datos del primer vuelo sin predicción
+            const vuelosGroups = document.querySelectorAll('.vuelo-group');
+            let vueloSinPrediccion = null;
+            let formData = null;
+            let indiceVuelo = -1;
+    
+            for (let i = 0; i < vuelosGroups.length; i++) {
+                const group = vuelosGroups[i];
+                if (!group.classList.contains('predicted')) {
+                    const inputs = group.querySelectorAll('input, select');
+                    const data = {
+                        ciudad: inputs[0].value,
+                        fecha: inputs[1].value,
+                        hora: inputs[2].value,
+                        pasajeros: parseInt(inputs[3].value),
+                        costo: parseFloat(inputs[4].value)
+                    };
+    
+                    // Validar datos
+                    if (!data.ciudad || !data.fecha || !data.hora) {
+                        showError('Por favor, complete todos los campos del vuelo ' + (i + 1));
+                        return;
+                    }
+    
+                    // Verificar si ya fue predicho
+                    if (yaFuePredicho(data.ciudad, data.fecha, data.hora)) {
+                        showWarning(`El vuelo ${i + 1} (${data.ciudad.toUpperCase()} - ${data.fecha} ${data.hora}) ya fue predicho anteriormente. No se puede predecir el mismo vuelo dos veces.`);
+                        return;
+                    }
+    
+                    vueloSinPrediccion = group;
+                    formData = data;
+                    indiceVuelo = i + 1;
+                    break;
+                }
+            }
+    
+            if (!vueloSinPrediccion) {
+                showWarning('Todos los vuelos ya han sido predichos. Agregue un nuevo vuelo con datos diferentes para realizar una nueva predicción.');
                 return;
             }
-
+    
+            console.log('Enviando datos:', formData);
+    
             // Mostrar loading
             showLoading(true);
-
+    
             try {
+                // Realizar llamada real al backend
                 const response = await fetch('/predecir', {
                     method: 'POST',
                     headers: {
@@ -467,132 +693,273 @@
                     },
                     body: JSON.stringify(formData)
                 });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    showResults(result);
-                } else {
-                    showError(result.error || 'Error en la predicción');
+    
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Error HTTP: ${response.status}`);
                 }
+    
+                const result = await response.json();
+                
+                showResults(result);
+                marcarComoPredicho(formData.ciudad, formData.fecha, formData.hora, vueloSinPrediccion);
+                
+                // Mostrar mensaje de éxito
+                showSuccess(`Predicción completada para el Vuelo ${indiceVuelo} (${formData.ciudad.toUpperCase()} - ${formData.fecha} ${formData.hora}). ${result.ahorro_estimado > 0 ? 'Ahorro estimado: $' + result.ahorro_estimado : 'Sin ahorro calculado para este vuelo.'}`);
+                
+                // Actualizar estadísticas
+                loadStats();
+                
             } catch (error) {
+                console.error('Error de conexión:', error);
                 showError('Error de conexión: ' + error.message);
             } finally {
                 showLoading(false);
             }
         });
-
+    
         function showLoading(show) {
             const button = document.getElementById('predict-btn');
             const spinner = document.getElementById('loading-spinner');
             const text = document.getElementById('predict-btn-text');
-
+    
             if (show) {
                 button.disabled = true;
-                spinner.style.display = 'inline-block'; // Mostrar spinner
-                text.textContent = 'Analizando...';      // Cambiar texto
+                spinner.style.display = 'inline-block';
+                text.textContent = 'Analizando...';
             } else {
                 button.disabled = false;
-                spinner.style.display = 'none';          // Ocultar spinner
-                text.textContent = 'Predecir Retraso';   // Restaurar texto
+                spinner.style.display = 'none';
+                text.textContent = 'Predecir Retraso';
             }
         }
-
-
+    
         function showResults(result) {
             const resultsSection = document.getElementById('results-section');
             const riskIndicator = document.getElementById('risk-indicator');
             const riskText = document.getElementById('risk-text');
             const probabilityFill = document.getElementById('probability-fill');
             const probabilityText = document.getElementById('probability-text');
-
+    
             // Mostrar sección de resultados
             resultsSection.classList.add('show');
-
+    
             // Configurar indicador de riesgo
             riskIndicator.className = 'risk-indicator risk-' + result.riesgo.toLowerCase();
             riskText.textContent = `Riesgo ${result.riesgo.toUpperCase()} de Retraso`;
-
+    
             // Configurar barra de probabilidad
-            const probability = Math.round(result.probabilidad_retraso);  // Asegúrate que sea probabilidad_retraso
+            const probability = Math.round(result.probabilidad_retraso);
             probabilityFill.style.width = probability + '%';
             probabilityText.textContent = probability + '%';
-
+    
+            // Eliminar mensaje de clima anterior si existe
+            const oldFecha = document.getElementById('clima-fecha');
+            if (oldFecha) oldFecha.remove();
+    
+            // Insertar nuevo mensaje de fecha/hora de clima
+            const fechaPronostico = result.datos_clima.fecha_observacion_peru || result.fecha_hora || 'Fecha no disponible';
+            const fechaDiv = document.createElement('div');
+            fechaDiv.id = 'clima-fecha';
+            fechaDiv.style.textAlign = 'center';
+            fechaDiv.style.fontSize = '0.9rem';
+            fechaDiv.style.color = '#666';
+            fechaDiv.style.marginTop = '5px';
+            fechaDiv.innerHTML = `🕓 Clima para: <strong>${fechaPronostico}</strong>`;
+            probabilityText.insertAdjacentElement('afterend', fechaDiv);
+    
             // Mostrar datos climáticos
             updateWeatherInfo(result.datos_clima);
-
+    
             // Mostrar recomendaciones
-            updateRecommendations(result.recomendaciones);
-
-            // Actualizar estadísticas
-            loadStats();
+            updateRecommendations(result.recomendaciones || []);
         }
-
-
-        function updateWeatherInfo(weather) {
+    
+        function agregarVuelo() {
+            contadorVuelos++;
+            const container = document.getElementById('vuelos-container');
+            const index = container.querySelectorAll('.vuelo-group').length;
+            const datosAleatorios = generarDatosVuelo();
+    
+            const vueloHTML = `
+            <div class="vuelo-group" data-index="${index}">
+                <button type="button" class="remove-flight-btn" onclick="eliminarVuelo(this)" title="Eliminar vuelo">×</button>
+                <h3>Vuelo ${index + 1}</h3>
+                <div class="form-group">
+                    <label>Ciudad de Destino:</label>
+                    <select name="ciudad" required>
+                        <option value="">Seleccionar ciudad...</option>
+                        <option value="lima" ${datosAleatorios.ciudad === 'lima' ? 'selected' : ''}>Lima</option>
+                        <option value="arequipa" ${datosAleatorios.ciudad === 'arequipa' ? 'selected' : ''}>Arequipa</option>
+                        <option value="trujillo" ${datosAleatorios.ciudad === 'trujillo' ? 'selected' : ''}>Trujillo</option>
+                        <option value="piura" ${datosAleatorios.ciudad === 'piura' ? 'selected' : ''}>Piura</option>
+                        <option value="cajamarca" ${datosAleatorios.ciudad === 'cajamarca' ? 'selected' : ''}>Cajamarca</option>
+                        <option value="puno" ${datosAleatorios.ciudad === 'puno' ? 'selected' : ''}>Puno</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Fecha del Vuelo:</label>
+                    <input type="date" name="fecha" required min="${new Date().toISOString().split('T')[0]}">
+                </div>
+                <div class="form-group">
+                    <label>Hora del Vuelo:</label>
+                    <input type="time" name="hora" value="${datosAleatorios.hora}" required>
+                </div>
+                <div class="form-group">
+                    <label>Número estimado de pasajeros:</label>
+                    <input type="number" name="pasajeros" min="1" value="${datosAleatorios.pasajeros}" required>
+                </div>
+                <div class="form-group">
+                    <label>Costo estimado por pasajero (USD):</label>
+                    <input type="number" name="costo" min="1" value="${datosAleatorios.costo}" required>
+                </div>
+                <hr>
+            </div>`;
+    
+            container.insertAdjacentHTML('beforeend', vueloHTML);
+            
+            // Mostrar mensaje informativo
+            showSuccess(`Nuevo vuelo agregado. Los datos se generaron automáticamente con hora única (${datosAleatorios.hora}). Ajuste la fecha y otros detalles según sea necesario.`);
+        }
+    
+        function eliminarVuelo(btn) {
+            const vueloGroup = btn.closest('.vuelo-group');
+            const vueloNumber = vueloGroup.querySelector('h3').textContent;
+            
+            // Si el vuelo ya fue predicho, remover de la lista de predichos
+            const inputs = vueloGroup.querySelectorAll('input, select');
+            if (inputs.length >= 3) {
+                const ciudad = inputs[0].value;
+                const fecha = inputs[1].value;
+                const hora = inputs[2].value;
+                
+                if (ciudad && fecha && hora) {
+                    const id = crearIdVuelo(ciudad, fecha, hora);
+                    vuelosPredichos.delete(id);
+                }
+            }
+            
+            vueloGroup.remove();
+            
+            // Renumerar vuelos restantes
+            const remainingFlights = document.querySelectorAll('.vuelo-group');
+            remainingFlights.forEach((flight, index) => {
+                const h3 = flight.querySelector('h3');
+                h3.textContent = `Vuelo ${index + 1}`;
+                flight.setAttribute('data-index', index);
+            });
+            
+            showSuccess(`${vueloNumber} eliminado correctamente.${vuelosPredichos.size > 0 ? ' Las predicciones anteriores se mantienen.' : ''}`);
+        }
+    
+        function updateWeatherInfo(datosClima) {
             const weatherInfo = document.getElementById('weather-info');
-            weatherInfo.innerHTML = `
+            
+            const weatherCards = [
+                { label: 'Temperatura', value: `${datosClima.temperatura || 'N/A'}°C` },
+                { label: 'Precipitación', value: `${datosClima.precipitacion || 0} mm` },
+                { label: 'Viento', value: `${datosClima.viento_velocidad || 'N/A'} km/h` },
+                { label: 'Presión', value: `${datosClima.presion || 'N/A'} hPa` },
+                { label: 'Visibilidad', value: `${datosClima.visibilidad || 'N/A'} km` },
+                { label: 'Nubosidad', value: `${datosClima.nubosidad || 'N/A'}%` }
+            ];
+    
+            weatherInfo.innerHTML = weatherCards.map(card => `
                 <div class="weather-card">
-                    <div class="value">${weather.temperatura}°C</div>
-                    <div class="label">Temperatura</div>
+                    <div class="value">${card.value}</div>
+                    <div class="label">${card.label}</div>
                 </div>
-                <div class="weather-card">
-                    <div class="value">${weather.viento_velocidad} km/h</div>
-                    <div class="label">Viento</div>
-                </div>
-                <div class="weather-card">
-                    <div class="value">${weather.precipitacion} mm</div>
-                    <div class="label">Precipitación</div>
-                </div>
-                <div class="weather-card">
-                    <div class="value">${weather.presion} hPa</div>
-                    <div class="label">Presión</div>
-                </div>
-                <div class="weather-card">
-                    <div class="value">${weather.visibilidad} km</div>
-                    <div class="label">Visibilidad</div>
-                </div>
-                <div class="weather-card">
-                    <div class="value">${weather.nubosidad}%</div>
-                    <div class="label">Nubosidad</div>
-                </div>
-            `;
+            `).join('');
         }
-
-
-        function updateRecommendations(recommendations) {
+    
+        function updateRecommendations(recomendaciones) {
             const recommendationsList = document.getElementById('recommendations-list');
-            recommendationsList.innerHTML = recommendations
-                .map(rec => `<li>${rec}</li>`)
-                .join('');
+            
+            if (recomendaciones && recomendaciones.length > 0) {
+                recommendationsList.innerHTML = recomendaciones.map(rec => `<li>${rec}</li>`).join('');
+            } else {
+                recommendationsList.innerHTML = '<li>No hay recomendaciones específicas disponibles</li>';
+            }
         }
-
-        function showError(message) {
-            const resultsSection = document.getElementById('results-section');
-            resultsSection.innerHTML = `
-                <div class="error-message">
-                    <strong>Error:</strong> ${message}
-                </div>
-            `;
-            resultsSection.classList.add('show');
-        }
-
+    
+        // Función para cargar estadísticas reales desde el backend
         async function loadStats() {
             try {
                 const response = await fetch('/estadisticas');
-                const stats = await response.json();
-
-                document.getElementById('predicciones-hoy').textContent = stats.predicciones_hoy;
-                document.getElementById('precision-modelo').textContent = stats.precision_modelo + '%';
-                document.getElementById('retrasos-evitados').textContent = stats.retrasos_evitados;
-                document.getElementById('ahorro-estimado').textContent = '$' + stats.ahorro_estimado.toLocaleString();
+                if (response.ok) {
+                    const stats = await response.json();
+                    
+                    document.getElementById('predicciones-hoy').textContent = stats.predicciones_hoy || 0;
+                    document.getElementById('precision-modelo').textContent = `${stats.precision_modelo || 0}%`;
+                    document.getElementById('retrasos-evitados').textContent = stats.retrasos_evitados || 0;
+                    document.getElementById('ahorro-estimado').textContent = `$${(stats.ahorro_estimado || 0).toLocaleString()}`;
+                } else {
+                    console.warn('No se pudieron cargar las estadísticas');
+                    // Mostrar valores por defecto
+                    document.getElementById('predicciones-hoy').textContent = '0';
+                    document.getElementById('precision-modelo').textContent = '0%';
+                    document.getElementById('retrasos-evitados').textContent = '0';
+                    document.getElementById('ahorro-estimado').textContent = '$0';
+                }
             } catch (error) {
                 console.error('Error cargando estadísticas:', error);
+                // Mostrar valores por defecto en caso de error
+                document.getElementById('predicciones-hoy').textContent = '0';
+                document.getElementById('precision-modelo').textContent = '0%';
+                document.getElementById('retrasos-evitados').textContent = '0';
+                document.getElementById('ahorro-estimado').textContent = '$0';
             }
         }
-
-        // Actualizar estadísticas cada 5 minutos
-        setInterval(loadStats, 5 * 60 * 1000);
+    
+        // Funciones para mostrar mensajes
+        function showError(message) {
+            removeExistingMessages();
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            document.querySelector('.form-section').appendChild(errorDiv);
+            
+            setTimeout(() => {
+                if (errorDiv.parentNode) {
+                    errorDiv.parentNode.removeChild(errorDiv);
+                }
+            }, 5000);
+        }
+    
+        function showSuccess(message) {
+            removeExistingMessages();
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success-message';
+            successDiv.textContent = message;
+            document.querySelector('.form-section').appendChild(successDiv);
+            
+            setTimeout(() => {
+                if (successDiv.parentNode) {
+                    successDiv.parentNode.removeChild(successDiv);
+                }
+            }, 5000);
+        }
+    
+        function showWarning(message) {
+            removeExistingMessages();
+            const warningDiv = document.createElement('div');
+            warningDiv.className = 'warning-message';
+            warningDiv.textContent = message;
+            document.querySelector('.form-section').appendChild(warningDiv);
+            
+            setTimeout(() => {
+                if (warningDiv.parentNode) {
+                    warningDiv.parentNode.removeChild(warningDiv);
+                }
+            }, 6000);
+        }
+    
+        function removeExistingMessages() {
+            const messages = document.querySelectorAll('.error-message, .success-message, .warning-message');
+            messages.forEach(msg => {
+                if (msg.parentNode) {
+                    msg.parentNode.removeChild(msg);
+                }
+            });
+        }
     </script>
-</body>
-</html>

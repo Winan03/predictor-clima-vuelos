@@ -69,13 +69,16 @@ def predecir_retraso():
         ciudad = data.get('ciudad')
         fecha = data.get('fecha')
         hora = data.get('hora')
+        pasajeros = data.get('pasajeros', 120)  
+        costo = data.get('costo', 100.0)        
+
         
         # Validar datos de entrada
         if not ciudad or not fecha or not hora:
             return jsonify({'error': 'Faltan datos requeridos: ciudad, fecha, hora'}), 400
         
         # Obtener datos climáticos
-        datos_clima = obtener_datos_clima_reales(ciudad, fecha)
+        datos_clima = obtener_datos_clima_reales(ciudad, fecha, hora)
         
         # Convertir fecha y hora
         try:
@@ -197,7 +200,10 @@ def predecir_retraso():
 
                 if prediccion:  
                     retrasos_evitados += 1
-                    ahorro_estimado += 140  
+                    ahorro_estimado += round(pasajeros * costo)
+                    resultado['ahorro_estimado'] = round(pasajeros * costo)
+                else:
+                    resultado['ahorro_estimado'] = 0
 
                 return jsonify(resultado)
                 
