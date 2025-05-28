@@ -9,3 +9,4 @@ joblib
 requests
 boto3
 python-dotenv
+flask-cors
