@@ -6,7 +6,6 @@
     <title>Predictor de Retrasos de Vuelos</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
     <style>
         * {
             margin: 0;
@@ -18,28 +17,27 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            overflow-x: hidden;
+            padding: 20px;
         }
 
         .container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 40px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
         }
 
         /* Estilos para la sección de autenticación */
         .auth-section {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
+            padding: 60px 40px;
+            text-align: center;
+            background: linear-gradient(135deg, #4a6cf7 0%, #667eea 100%);
             color: white;
+            position: relative;
+            overflow: hidden;
         }
 
         .auth-section::before {
@@ -59,15 +57,10 @@
         }
 
         .auth-container {
-            width: 100%;
-            max-width: 420px;
+            max-width: 400px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 40px 30px;
-            border-radius: 20px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(10px);
-            text-align: center;
+            position: relative;
+            z-index: 1;
         }
 
         .auth-container h2 {
@@ -91,13 +84,13 @@
 
         .auth-form input {
             width: 100%;
-            padding: 17px;
+            padding: 15px;
             margin-bottom: 15px;
             border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 10px;
             background: rgba(255, 255, 255, 0.9);
             color: #333;
-            font-size: 18px;
+            font-size: 16px;
             transition: all 0.3s ease;
         }
 
@@ -175,17 +168,7 @@
             padding: 40px;
             text-align: center;
             position: relative;
-        }
-
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 40px;
-        }
-
-        .text-container {
-            text-align: center;
+            overflow: hidden;
         }
 
         .header::before {
@@ -199,73 +182,19 @@
             animation: float 20s infinite linear;
         }
 
-        .profile-container {
-            position: relative;
+        .user-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
             display: flex;
             align-items: center;
-            margin-left: 20px;
+            gap: 15px;
+            z-index: 2;
         }
 
-        .user-icon img {
-            width: 106px;
-            height: 106px;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 2px solid white;
-            transition: transform 0.2s ease;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-        }
-
-        .user-icon img:hover {
-            transform: scale(1.05); 
-        }
-
-        .user-menu {
-            position: absolute;
-            top: 60px;
-            right: 0;
-            background-color: white;
-            color: black;
-            padding: 10px 15px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-            z-index: 1000;
-            min-width: 160px;
-            text-align: left;
-            transform: translateX(10%); 
-        }
-
-            .user-menu p {
-            margin: 0 0 10px 0;
-            font-weight: bold;
-            color: #333;
-            font-size: 14px;
-            word-break: break-word;
-        }
-
-        .user-menu button {
-            width: 100%;
-            background-color: #e74c3c;
-            border: none;
-            color: white;
-            padding: 8px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 14px;
-            transition: background-color 0.2s ease;
-        }
-
-            .user-menu button:hover {
-            background-color: #c0392b;
-        }
-
-            .user-menu.hidden {
-            display: none;
-        }
-
-        .hidden {
-            display: none;
+        .user-info span {
+            font-size: 0.9rem;
+            opacity: 0.9;
         }
 
         .logout-btn {
@@ -283,28 +212,6 @@
             background: rgba(255, 255, 255, 0.3);
             border-color: rgba(255, 255, 255, 0.5);
         }
-
-        .password-container {
-            position: relative;
-            width: 100%;
-        }
-
-        .password-container input {
-            width: 100%;
-            padding-right: 40px; /* espacio para el ícono */
-        }
-
-        .toggle-password {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-            font-size: 18px;
-            color: #666;
-            user-select: none;
-        }
-
 
         .header h1 {
             font-size: 2.5rem;
@@ -344,6 +251,7 @@
             padding: 30px;
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: none;
             transition: all 0.3s ease;
         }
 
@@ -358,15 +266,14 @@
         }
 
         .form-group {
-            margin-bottom: 15px;
-            text-align: left;
+            margin-bottom: 25px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 6px;
-            font-weight: 500;
-            color: #fff;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
             font-size: 0.95rem;
         }
 
@@ -432,11 +339,6 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-5px); }
-            to   { opacity: 1; transform: translateY(0); }
         }
 
         .risk-indicator {
@@ -686,136 +588,6 @@
             transform: scale(1.1);
         }
 
-        .error-message {
-            background-color: #ffe0e0;
-            color: #b00020;
-            padding: 12px 16px;
-            border: 1px solid #ffb3b3;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            margin-top: 20px;
-            text-align: center;
-            max-width: 400px;
-            margin-left: auto;
-            margin-right: auto;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-            animation: fadeIn 0.3s ease-in-out;
-        }
-
-        .photo-upload {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .photo-upload label {
-            font-weight: 500;
-            margin-bottom: 8px;
-            font-size: 0.95rem;
-            color: #444;
-            display: block;
-            text-align: center;
-        }
-
-        .photo-upload input[type="file"] {
-            margin-bottom: 12px;
-            font-size: 0.9rem;
-        }
-
-        .preview-container {
-            width: 100px;
-            height: 100px;
-            overflow: hidden;
-            border-radius: 50%;
-            border: 2px solid #ddd;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-            display: none;
-        }
-
-        .preview-container img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .photo-label {
-            font-size: 0.95rem;
-            color: #444;
-            margin-bottom: 6px;
-            display: block;
-        }
-
-        .photo-label-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .photo-text {
-            font-size: 0.95rem;
-            color: #444;
-            font-weight: 500;
-            margin-bottom: 8px;
-        }
-
-        .custom-file-input {
-            display: block;
-            width: 100%;
-            padding: 10px 12px;
-            background-color: #f4f4f4;
-            border: 2px dashed #bbb;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: border 0.3s ease;
-        }
-
-        .custom-file-input:hover {
-            border-color: #4a6cf7;
-            background-color: #fafafa;
-        }
-
-        .photo-circle {
-            position: relative;
-            width: 110px;
-            height: 110px;
-            border-radius: 50%;
-            overflow: hidden;
-            border: 3px solid #ccc;
-            box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
-            cursor: pointer;
-            transition: transform 0.2s ease;
-        }
-
-        .photo-circle:hover {
-            transform: scale(1.03);
-        }
-
-        .photo-circle img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .camera-icon {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            text-align: center;
-            background: rgba(0, 0, 0, 0.45);
-            color: white;
-            font-size: 18px;
-            padding: 4px 0;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-
-        .photo-circle:hover .camera-icon {
-            opacity: 1;
-        }
-
         @media (max-width: 768px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -832,120 +604,25 @@
             }
 
             .auth-section {
-                min-height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-            }
-
-            .bubble-alert {
-                position: absolute;
-                background: #4a6cf7;
-                color: white;
-                padding: 8px 15px;
-                border-radius: 20px;
-                font-size: 0.9rem;
-                font-weight: bold;
-                z-index: 999;
-                animation: floatUp 2s ease-out forwards;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                padding: 40px 20px;
             }
 
             .auth-container {
-                width: 100%;
-                max-width: 500px; /* Aumenta el ancho */
-                padding: 60px 40px; /* Más espacio interno */
-                background: rgba(255, 255, 255, 0.08); /* Un poco más visible */
-                border-radius: 25px;
-                box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25); /* Sombra más elegante */
-                backdrop-filter: blur(14px);
-                text-align: center;
-                transition: all 0.3s ease;
+                max-width: 100%;
             }
 
             .user-info {
-                    position: relative;
-                    top: auto;
-                    right: auto;
-                    justify-content: center;
-                    margin-bottom: 20px;
+                position: relative;
+                top: auto;
+                right: auto;
+                justify-content: center;
+                margin-bottom: 20px;
             }
-                
+            
             .stats-section {
-                    margin: 0 20px 20px 20px;
+                margin: 0 20px 20px 20px;
             }
-
-            #results-section {
-                    display: none;
-            }
-
-            .img-placeholder {
-                    width: 100%;
-                    max-width: 200px;
-                    display: block;
-                    margin: 20px auto;
-                    opacity: 0.95;
-            }
-
-            .vuelo-group.minimizado {
-                    max-height: 50px;
-                    overflow: hidden;
-                    opacity: 0.5;
-                    transition: all 0.3s ease;
-                    cursor: pointer;
-            }
-
-            .vuelo-group.minimizado:hover {
-                    opacity: 0.8;
-            }
-
-            .vuelo-group.minimizado::after {
-                    content: "🛈 Vuelo ya predicho (haz clic para expandir)";
-                    display: block;
-                    font-size: 0.85rem;
-                    color: #555;
-                    padding: 5px;
-                    text-align: center;
-            }
-            
-            @keyframes floatUp {
-                    0% {
-                        opacity: 0;
-                        transform: translateY(10px) scale(0.95);
-                    }
-                    50% {
-                        opacity: 1;
-                        transform: translateY(-10px) scale(1.05);
-                    }
-                    100% {
-                        opacity: 0;
-                        transform: translateY(-30px) scale(1);
-                    }
-            }
-            
         }
-
-        .toggle-btn {
-                background-color: #4a6cf7;
-                color: white;
-                padding: 8px 14px;
-                border: none;
-                border-radius: 6px;
-                font-size: 14px;
-                font-weight: bold;
-                cursor: pointer;
-                margin-top: 10px;
-                display: inline-block;
-                transition: background-color 0.2s ease, transform 0.2s ease;
-                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-        }
-
-        .toggle-btn:hover {
-                background-color: #3a59d8;
-                transform: scale(1.03);
-        }
-
     </style>
 </head>
 <body>
@@ -953,73 +630,19 @@
         <!-- Sección de autenticación -->
         <div class="auth-section" id="auth-section">
             <div class="auth-container">
-                <h2 id="auth-title">🔐 Iniciar Sesión</h2>
-                <p id="auth-subtitle">Inicie sesión para acceder al predictor de vuelos</p>
+                <h2>🔐 Iniciar Sesión</h2>
+                <p>Inicie sesión para acceder al predictor de vuelos</p>
                 <div id="auth-forms">
                     <div class="auth-form" id="login-form">
-                        <div class="form-group">
-                            <label for="login-email">Correo electrónico</label>
-                            <input type="email" id="login-email" placeholder="Correo electrónico" required>
-                          </div>
-                          <div class="form-group">
-                            <label for="login-password">Contraseña</label>
-                            <div class="password-container">
-                              <input type="password" id="login-password" placeholder="Contraseña" required>
-                              <span class="toggle-password" onclick="togglePassword('login-password', this)">👁️</span>
-                            </div>
-                        </div>                       
+                        <input type="email" id="login-email" placeholder="Correo electrónico" required>
+                        <input type="password" id="login-password" placeholder="Contraseña" required>
                         <button type="button" onclick="loginUser()">Iniciar Sesión</button>
                         <p><a href="#" onclick="showRegisterForm()">¿No tienes cuenta? Regístrate</a></p>
                     </div>
                     <div class="auth-form hidden" id="register-form">
-                        <div class="form-group">
-                            <label for="register-name">Nombre completo</label>
-                            <input type="text" id="register-name" placeholder="Tu nombre completo" required>
-                          </div>
-                          
-                          <div class="form-group">
-                            <label for="register-username">Nombre de usuario</label>
-                            <input type="text" id="register-username" placeholder="Nombre de usuario" required>
-                          </div>
-                          
-                          <div class="form-group">
-                            <label for="register-email">Correo electrónico</label>
-                            <input type="email" id="register-email" placeholder="Correo electrónico" required>
-                          </div>
-                          
-                          <div class="form-group photo-upload">
-                            <div class="photo-label-wrapper">
-                              <label for="register-photo" class="photo-text">Foto de perfil (opcional)</label>
-                              <input type="file" id="register-photo" accept="image/*" hidden>
-                              <label for="register-photo" class="photo-circle">
-                                <img id="preview-photo" src="/static/default-profile.png" alt="Foto de perfil" />
-                                <div class="camera-icon">📷</div>
-                              </label>
-                            </div>
-                          </div>                          
-                          
-                          <div class="form-group">
-                            <label for="register-password">Contraseña</label>
-                            <div class="password-container">
-                              <input type="password" id="register-password" placeholder="Mín. 6 caracteres" required>
-                              <span class="toggle-password" onclick="togglePassword('register-password', this)">👁️</span>
-                            </div>
-                          </div>
-
-                          <div class="form-group">
-                            <button type="button" onclick="generarPasswordFuerte()" style="width: 100%; padding: 10px; background: #4a6cf7; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                              🔐 Generar Contraseña Segura
-                            </button>
-                          </div>
-                          
-                          <div class="form-group">
-                            <label for="register-confirm">Confirmar contraseña</label>
-                            <div class="password-container">
-                              <input type="password" id="register-confirm" placeholder="Confirmar contraseña" required>
-                              <span class="toggle-password" onclick="togglePassword('register-confirm', this)">👁️</span>
-                            </div>
-                          </div>                          
-                            
+                        <input type="email" id="register-email" placeholder="Correo electrónico" required>
+                        <input type="password" id="register-password" placeholder="Contraseña (mín. 6 caracteres)" required>
+                        <input type="password" id="register-confirm" placeholder="Confirmar contraseña" required>
                         <button type="button" onclick="registerUser()">Registrarse</button>
                         <p><a href="#" onclick="showLoginForm()">¿Ya tienes cuenta? Inicia sesión</a></p>
                     </div>
@@ -1034,23 +657,13 @@
         <!-- Aplicación principal (oculta inicialmente) -->
         <div class="main-app hidden" id="main-app">
             <div class="header">
-                <div class="header-content">
-                    <div class="text-container">
-                      <h1>🛩️ Predictor de Retrasos de Vuelos</h1>
-                      <p>Sistema inteligente de predicción basado en condiciones climáticas</p>
-                    </div>
-                  
-                    <div class="profile-container">
-                      <div class="user-icon" onclick="toggleUserMenu()">
-                        <img id="profile-pic" src="/static/default-profile.png" alt="Perfil" />
-                      </div>
-                      <div id="user-menu" class="user-menu hidden">
-                        <p id="user-name">Usuario</p>
-                        <button onclick="logoutUser()">Cerrar Sesión</button>
-                      </div>
-                    </div>
-                  </div>                  
-              </div>
+                <div class="user-info">
+                    <span id="user-email"></span>
+                    <button onclick="logoutUser()" class="logout-btn">Cerrar Sesión</button>
+                </div>
+                <h1>🛩️ Predictor de Retrasos de Vuelos</h1>
+                <p>Sistema inteligente de predicción basado en condiciones climáticas</p>
+            </div>
 
             <div class="main-content">
                 <div class="form-section">
@@ -1102,59 +715,31 @@
                 </div>
 
                 <div class="results-section" id="results-section">
-                    <!-- Vista previa antes de predecir -->
-                    <div id="placeholder-prediccion" class="placeholder-prediccion" style="
-                        display: flex;
-                        flex-direction: column;
-                        justify-content: center;
-                        align-items: center;
-                        height: 100%;
-                    ">
-                      <h2>Resultado de la Predicción</h2>
-                      <div class="prediction-placeholder-content" style="text-align: center;">
-                        <img src="/static/flight-predict.png"
-                             alt="Esperando predicción"
-                             style="
-                               max-width: 350px;
-                               width: 100%;
-                               height: auto;
-                               display: block;
-                               margin: 0 auto 15px auto;
-                             " />
-                        <p class="placeholder-text" style="
-                            font-size: 1.2em;
-                            color: #555;
-                            margin-top: 0;
-                          ">
-                          Aquí aparecerán los resultados una vez que realices una predicción.
-                        </p>
-                      </div>
-                    </div>
-                  
-                    <div id="resultado-prediccion" style="display: none;">
-                      <div class="risk-indicator" id="risk-indicator">
+                    <h2>Resultado de la Predicción</h2>
+                    
+                    <div class="risk-indicator" id="risk-indicator">
                         <div id="risk-text">Analizando...</div>
-                      </div>
-                  
-                      <div>
+                    </div>
+
+                    <div>
                         <strong>Probabilidad de Retraso:</strong>
                         <div class="probability-bar">
-                          <div class="probability-fill" id="probability-fill" style="width: 0%;"></div>
+                            <div class="probability-fill" id="probability-fill" style="width: 0%;"></div>
                         </div>
                         <div style="text-align: center; font-weight: bold;" id="probability-text">0%</div>
-                      </div>
-                  
-                      <div class="weather-info" id="weather-info">
-                        <!-- Datos climáticos -->
-                      </div>
-                  
-                      <div class="recommendations" id="recommendations">
-                        <h3>Recomendaciones</h3>
-                        <ul id="recommendations-list"></ul>
-                      </div>
                     </div>
-                  </div>
-                  
+
+                    <div class="weather-info" id="weather-info">
+                        <!-- Datos climáticos se llenarán dinámicamente -->
+                    </div>
+
+                    <div class="recommendations" id="recommendations">
+                        <h3>Recomendaciones</h3>
+                        <ul id="recommendations-list">
+                            <!-- Recomendaciones se llenarán dinámicamente -->
+                        </ul>
+                    </div>
+                </div>
             </div>
 
             <div class="stats-section">
@@ -1211,30 +796,13 @@
             if (user) {
                 currentUser = user;
                 showMainApp();
-
-                const name = user.displayName || 'Usuario';
-                const photo = user.photoURL || '/static/default-profile.png';
-
-                document.getElementById('user-name').textContent = name;
-                document.getElementById('profile-pic').src = photo;
-
+                document.getElementById('user-email').textContent = user.email;
                 loadStats();
             } else {
                 currentUser = null;
                 showAuthSection();
             }
         });
-
-        function toggleAuthView() {
-            
-            showMainApp();
-        }
-
-        
-        function toggleUserMenu() {
-            const menu = document.getElementById('user-menu');
-            menu.classList.toggle('hidden');
-        }
 
         function showAuthSection() {
             document.getElementById('auth-section').classList.remove('hidden');
@@ -1249,153 +817,50 @@
         function showLoginForm() {
             document.getElementById('login-form').classList.remove('hidden');
             document.getElementById('register-form').classList.add('hidden');
-
-            document.getElementById('auth-title').textContent = '🔐 Iniciar Sesión';
-            document.getElementById('auth-subtitle').textContent = 'Inicie sesión para acceder al predictor de vuelos';
         }
 
         function showRegisterForm() {
             document.getElementById('login-form').classList.add('hidden');
             document.getElementById('register-form').classList.remove('hidden');
-
-            document.getElementById('auth-title').textContent = '📝 Registro de Usuario';
-            document.getElementById('auth-subtitle').textContent = 'Cree una cuenta para usar el predictor de vuelos';
         }
 
         async function loginUser() {
-            const email = document.getElementById('login-email').value.trim();
-            const password = document.getElementById('login-password').value.trim();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
 
             if (!email || !password) {
                 showError('Por favor, complete todos los campos');
                 return;
             }
 
-            // Validación de formato de correo
-            if (!/^[a-zA-Z][a-zA-Z0-9_.+-]*@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$/.test(email)) {
-                showError('Ingrese un correo electrónico válido (ej: ejemplo@dominio.com).');
-                return;
-            }
-
-            // Validación de contraseña mínima
-            if (password.length < 6) {
-                showError('La contraseña debe tener al menos 6 caracteres.');
-                return;
-            }
-
-            if (!/[A-Za-z]/.test(password)) {
-                showError('La contraseña debe contener al menos una letra.');
-                return;
-            }
-
-            if (!/\d/.test(password)) {
-                showError('La contraseña debe contener al menos un número.');
-                return;
-            }
-
             showAuthLoading(true);
 
             try {
-                const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                const user = userCredential.user;
-
-                const userName = user.displayName || email.split('@')[0];
-                document.getElementById('user-name').textContent = userName;
-                localStorage.setItem('userName', userName);
-
+                await auth.signInWithEmailAndPassword(email, password);
                 showSuccess('Inicio de sesión exitoso');
-                toggleAuthView();
             } catch (error) {
-                console.error('🔐 Error completo de login:', error);
-
-                if (error.code) {
-                    showError(getAuthErrorMessage(error.code));
-                } else if (error.message?.toLowerCase().includes("network")) {
-                    showError("Problema de red al iniciar sesión. Verifica tu conexión.");
-                } else if (error.message?.toLowerCase().includes("popup")) {
-                    showError("Error con el popup de autenticación. Intenta nuevamente.");
-                } else {
-                    showError("Error inesperado durante el login: " + (error.message || "sin mensaje."));
-                }
+                console.error('Error de login:', error);
+                showError(getAuthErrorMessage(error.code));
             } finally {
                 showAuthLoading(false);
             }
-
         }
 
-
-        window.onload = () => {
-            const savedName = localStorage.getItem('userName');
-            if (savedName) {
-                document.getElementById('user-name').textContent = savedName;
-            }
-
-            document.getElementById('register-photo').addEventListener('change', function (event) {
-                const file = event.target.files[0];
-                const preview = document.getElementById('preview-photo');
-                if (file) {
-                    preview.src = URL.createObjectURL(file);
-                } else {
-                    preview.src = "/static/default-profile.png";
-                }
-            });
-        };
-
-
         async function registerUser() {
-            const email = document.getElementById('register-email').value.trim();
-            const password = document.getElementById('register-password').value.trim();
-            const confirmPassword = document.getElementById('register-confirm').value.trim();
-            const nombre = document.getElementById('register-name').value.trim();
-            const username = document.getElementById('register-username').value.trim().toLowerCase();
-            const photoFile = document.getElementById('register-photo').files[0];
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm').value;
 
-            // Validación del nombre
-            const palabras = nombre.split(' ').filter(p => p.length > 0);
-            if (palabras.length < 4) {
-                showError('Por favor ingrese su nombre completo (ej: Ana María López Castillo).');
-                return;
-            }
-            if (palabras.length > 6) {
-                showError('Nombre muy largo: ingrese solo sus 2 nombres y 2 apellidos.');
-                return;
-            }
-            if (!/^[a-zA-ZÁÉÍÓÚÑáéíóúñ\s]+$/.test(nombre)) {
-                showError('El nombre solo debe contener letras y espacios (sin números ni símbolos).');
-                return;
-            }
-
-            // Validar campos básicos
-            if (!email || !password || !confirmPassword || !nombre || !username) {
+            if (!email || !password || !confirmPassword) {
                 showError('Por favor, complete todos los campos');
                 return;
             }
 
-            // Validar correo
-            if (!/^[a-zA-Z][a-zA-Z0-9_.+-]*@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$/.test(email)) {
-                showError('Ingrese un correo electrónico válido (ej: ejemplo@dominio.com).');
-                return;
-            }
-
-            // Validar username
-            if (!/^[a-zA-Z0-9_.-]{4,20}$/.test(username)) {
-                showError('El nombre de usuario debe tener entre 4 y 20 caracteres y solo letras, números o guiones.');
-                return;
-            }
-
-            // Validar contraseña
             if (password.length < 6) {
-                showError('La contraseña debe tener al menos 6 caracteres.');
+                showError('La contraseña debe tener al menos 6 caracteres');
                 return;
             }
-            if (!/[A-Za-z]/.test(password)) {
-                showError('La contraseña debe contener al menos una letra.');
-                return;
-            }
-            if (!/\d/.test(password)) {
-                showError('La contraseña debe contener al menos un número.');
-                return;
-            }
+
             if (password !== confirmPassword) {
                 showError('Las contraseñas no coinciden');
                 return;
@@ -1404,87 +869,15 @@
             showAuthLoading(true);
 
             try {
-                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                const user = userCredential.user;
-                let photoURL = "/static/default-profile.png";
-
-                // ✅ SUBIDA DE IMAGEN CON MANEJO DE ERRORES DETALLADO
-                if (photoFile) {
-                    try {
-                        const storageRef = firebase.storage().ref();
-                        const userPhotoRef = storageRef.child(`users/${user.uid}/profile.jpg`);
-                        await userPhotoRef.put(photoFile);
-                        photoURL = await userPhotoRef.getDownloadURL();
-                    } catch (uploadError) {
-                        console.error("Error al subir imagen:", uploadError);
-                        showError("La cuenta se creó, pero no se pudo subir la imagen. Puedes intentarlo desde tu perfil más adelante.");
-                    }
-                }
-
-                await user.updateProfile({
-                    displayName: nombre,
-                    photoURL: photoURL
-                });
-
-                localStorage.setItem('userName', nombre);
-                localStorage.setItem('userPhoto', photoURL);
-                document.getElementById('user-name').textContent = nombre;
-                document.getElementById('profile-pic').src = photoURL;
-
+                await auth.createUserWithEmailAndPassword(email, password);
                 showSuccess('Registro exitoso. Bienvenido!');
-                toggleAuthView();
-
             } catch (error) {
-                console.error('⚠️ Error completo:', error);
-                const codigo = error?.code || 'error-desconocido';
-                showError(getAuthErrorMessage(codigo));
+                console.error('Error de registro:', error);
+                showError(getAuthErrorMessage(error.code));
             } finally {
                 showAuthLoading(false);
             }
         }
-
-        function generarPasswordFuerte(longitud = 12) {
-            const caracteres = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?";
-            let password = "";
-            for (let i = 0; i < longitud; i++) {
-                password += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
-            }
-
-            const input = document.getElementById('register-password');
-            const confirm = document.getElementById('register-confirm');
-            input.value = password;
-            confirm.value = password;
-        }
-
-
-        function togglePassword(inputId, iconElement) {
-            const input = document.getElementById(inputId);
-            if (input.type === 'password') {
-                input.type = 'text';
-                iconElement.textContent = '🙈';
-            } else {
-                input.type = 'password';
-                iconElement.textContent = '👁️';
-            }
-        }
-
-        function mostrarBurbujaPrediccion(mensaje = "✅ Predicción hecha") {
-            const bubble = document.createElement('div');
-            bubble.className = 'bubble-alert';
-            bubble.textContent = mensaje;
-
-            const icon = document.querySelector('.user-icon') || document.body;
-            icon.appendChild(bubble);
-
-            bubble.style.top = '-10px';
-            bubble.style.left = '50%';
-            bubble.style.transform = 'translateX(-50%)';
-
-            setTimeout(() => {
-                bubble.remove();
-            }, 2000);
-            }
-
 
         async function logoutUser() {
             try {
@@ -1510,28 +903,21 @@
         }
 
         function getAuthErrorMessage(errorCode) {
-    if (!errorCode || typeof errorCode !== 'string') {
-        return 'Error desconocido. Intente nuevamente o revise la consola para más detalles.';
-    }
-
-        switch (errorCode) {
-            case 'auth/user-not-found':
-                return 'El usuario no está registrado.';
-            case 'auth/wrong-password':
-                return 'La contraseña es incorrecta.';
-            case 'auth/invalid-login-credentials':
-                return 'Correo o contraseña incorrectos.';
-            case 'auth/email-already-in-use':
-                return 'El correo ya está registrado.';
-            case 'auth/weak-password':
-                return 'La contraseña es muy débil.';
-            case 'auth/invalid-email':
-                return 'Correo electrónico inválido.';
-            default:
-                return `Error de autenticación no manejado. Código recibido: ${errorCode}`;
+            switch (errorCode) {
+                case 'auth/user-not-found':
+                    return 'Usuario no encontrado';
+                case 'auth/wrong-password':
+                    return 'Contraseña incorrecta';
+                case 'auth/email-already-in-use':
+                    return 'El correo ya está registrado';
+                case 'auth/weak-password':
+                    return 'La contraseña es muy débil';
+                case 'auth/invalid-email':
+                    return 'Correo electrónico inválido';
+                default:
+                    return 'Error de autenticación: ' + errorCode;
+            }
         }
-    }
-
 
         // ============= FUNCIONES DE LA APLICACIÓN PRINCIPAL =============
         document.addEventListener('DOMContentLoaded', function() {
@@ -1578,7 +964,6 @@
             };
         }
 
-
         function crearIdVuelo(ciudad, fecha, hora) {
             return `${ciudad}-${fecha}-${hora}`;
         }
@@ -1588,47 +973,25 @@
             return vuelosPredichos.has(id);
         }
 
-        function marcarComoPredicho(ciudad, fecha, hora, divVuelo) {
-            // Añadir clase de estilo general al vuelo
-            divVuelo.classList.add("vuelo-predicho");
-
-            // Verifica si ya tiene botón, y si es así, no lo vuelve a agregar
-            if (divVuelo.querySelector(".toggle-btn")) return;
-
-            // Crear botón
-            const btnToggle = document.createElement("button");
-            btnToggle.textContent = "🔼 Ocultar detalles"; // texto inicial
-            btnToggle.className = "toggle-btn bonito";     // clase para estilos
-            btnToggle.type = "button";                     // importante para no disparar submit
-            btnToggle.style.marginTop = "10px";
-
-            // Agregar funcionalidad
-            btnToggle.onclick = () => {
-                const detalles = divVuelo.querySelectorAll(".form-group");
-                const ocultando = detalles[0].classList.contains("hidden");
-
-                detalles.forEach(el => el.classList.toggle("hidden"));
-                btnToggle.textContent = ocultando ? "🔼 Ocultar detalles" : "🔽 Mostrar detalles";
-            };
-
-            divVuelo.appendChild(btnToggle);
+        function marcarComoPredicho(ciudad, fecha, hora, vueloGroup) {
+            const id = crearIdVuelo(ciudad, fecha, hora);
+            vuelosPredichos.add(id);
+            
+            vueloGroup.classList.add('predicted');
+            const status = document.createElement('div');
+            status.className = 'prediction-status predicted';
+            status.textContent = '✓ Predicho';
+            vueloGroup.appendChild(status);
         }
 
         // ============= MANEJO DEL FORMULARIO DE PREDICCIÓN =============
         document.getElementById('prediction-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            if (!currentUser || !currentUser.uid) {
-                showError('Error de sesión: no se detectó correctamente el usuario');
-                return;
-            }
-
             if (!currentUser) {
                 showError('Debe iniciar sesión para realizar predicciones');
                 return;
             }
-
-            console.log("🔥 currentUser:", currentUser);
 
             const vuelosGroups = document.querySelectorAll('.vuelo-group');
             let vueloSinPrediccion = null;
@@ -1639,7 +1002,6 @@
                 const group = vuelosGroups[i];
                 if (!group.classList.contains('predicted')) {
                     const inputs = group.querySelectorAll('input, select');
-
                     const data = {
                         ciudad: inputs[0].value,
                         fecha: inputs[1].value,
@@ -1683,24 +1045,14 @@
                     body: JSON.stringify(formData)
                 });
 
-                console.log("🛬 Respuesta del servidor:", response);
-
                 if (!response.ok) {
-                    let errorText = `Error HTTP: ${response.status}`;
-                    try {
-                        const errorData = await response.json();
-                        errorText = errorData.error || errorText;
-                    } catch (e) {
-                        console.warn("⚠️ No se pudo parsear JSON del error");
-                    }
-                    throw new Error(errorText);
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Error HTTP: ${response.status}`);
                 }
-
 
                 const result = await response.json();
                 
                 showResults(result);
-                mostrarBurbujaPrediccion(`✈️ Vuelo ${formData.ciudad.toUpperCase()} predicho`);
                 marcarComoPredicho(formData.ciudad, formData.fecha, formData.hora, vueloSinPrediccion);
                 
                 let mensaje = `Predicción completada para el Vuelo ${indiceVuelo} (${formData.ciudad.toUpperCase()} - ${formData.fecha} ${formData.hora}).`;
@@ -1744,10 +1096,6 @@
             const riskText = document.getElementById('risk-text');
             const probabilityFill = document.getElementById('probability-fill');
             const probabilityText = document.getElementById('probability-text');
-
-            document.getElementById('placeholder-prediccion').style.display = 'none';
-            document.getElementById('resultado-prediccion').style.display = 'block';
-
 
             resultsSection.classList.add('show');
 
@@ -1911,21 +1259,19 @@
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message';
             errorDiv.textContent = message;
-
-            const targetContainer = document.getElementById('auth-section').classList.contains('hidden')
-                ? document.querySelector('.form-section')
+            
+            const targetContainer = document.getElementById('auth-section').classList.contains('hidden') 
+                ? document.querySelector('.form-section') 
                 : document.querySelector('.auth-container');
-
+                
             targetContainer.appendChild(errorDiv);
-            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
+            
             setTimeout(() => {
                 if (errorDiv.parentNode) {
                     errorDiv.parentNode.removeChild(errorDiv);
                 }
             }, 5000);
         }
-
 
         function showSuccess(message) {
             removeExistingMessages();
