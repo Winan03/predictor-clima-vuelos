@@ -11,7 +11,7 @@ import os
 load_dotenv()
 
 # Obtener la API KEY
-API_KEY = os.getenv("OPENWEATHER_API_KEY")
+API_KEY = os.getenv("WEATHERBIT_API_KEY")
 
 if API_KEY:
     print("✅ Clave cargada correctamente:", API_KEY[:5] + "..." + API_KEY[-5:])
@@ -51,15 +51,70 @@ def cargar_datos_s3(url_dataset):
         return None
 
 def generar_etiqueta_retraso(df):
+    """
+    Genera etiquetas de retraso basadas en condiciones meteorológicas realistas.
+    CORREGIDO: Ahora genera una distribución más realista de retrasos (15-25%)
+    
+    Args:
+        df (pandas.DataFrame): DataFrame con datos meteorológicos
+    
+    Returns:
+        pandas.Series: Serie con valores 0 (sin retraso) y 1 (con retraso)
+    """
+    # Asegurar que las columnas existen y tienen valores válidos
+    precipitacion = df.get('precipitacion', pd.Series([0] * len(df)))
+    viento_velocidad = df.get('viento_velocidad', pd.Series([0] * len(df)))
+    temperatura = df.get('temperatura', pd.Series([20] * len(df)))
+    presion = df.get('presion', pd.Series([1013] * len(df)))
+    visibilidad = df.get('visibilidad', pd.Series([15] * len(df)))
+    
+    # Rellenar valores NaN con valores por defecto
+    precipitacion = precipitacion.fillna(0)
+    viento_velocidad = viento_velocidad.fillna(0)
+    temperatura = temperatura.fillna(20)
+    presion = presion.fillna(1013)
+    visibilidad = visibilidad.fillna(15)
+    
+    # Calcular score de riesgo meteorológico con umbrales más realistas
     score = (
-        0.3 * (df['precipitacion'] > 5) +
-        0.2 * (df['viento_velocidad'] > 25) +
-        0.1 * ((df['temperatura'] < 5) | (df['temperatura'] > 35)) +
-        0.2 * (df['presion'] < 1000) +
-        0.2 * (df['visibilidad'] < 5)
+        0.4 * (precipitacion > 2.0) +          # Lluvia ligera ya puede causar retrasos
+        0.3 * (viento_velocidad > 15) +        # Viento moderado (reducido de 25)
+        0.15 * ((temperatura < 8) | (temperatura > 32)) +  # Temperaturas extremas más realistas
+        0.1 * (presion < 1005) +               # Presión baja (menos estricto)
+        0.05 * (visibilidad < 10)              # Visibilidad reducida
     )
-    return (score > 0.5).astype(int)
-
+    
+    # Agregar componente estocástico para variabilidad realista
+    # Esto simula otros factores no meteorológicos que causan retrasos
+    np.random.seed(42)  # Para reproducibilidad
+    factor_aleatorio = np.random.uniform(0, 0.3, len(df))
+    
+    # Combinar score meteorológico con factor aleatorio
+    score_final = score + factor_aleatorio
+    
+    # Umbral más bajo para generar ~15-25% de retrasos
+    umbral = 0.4
+    retrasos = (score_final > umbral).astype(int)
+    
+    # Debug: mostrar estadísticas
+    tasa_retrasos = retrasos.mean() * 100
+    print(f"🎯 Estadísticas de generación de retrasos:")
+    print(f"   - Score meteorológico promedio: {score.mean():.3f}")
+    print(f"   - Score final promedio: {score_final.mean():.3f}")
+    print(f"   - Umbral usado: {umbral}")
+    print(f"   - Tasa de retrasos generada: {tasa_retrasos:.1f}%")
+    print(f"   - Total de retrasos: {retrasos.sum()}/{len(retrasos)}")
+    
+    # Mostrar distribución por condiciones
+    if precipitacion.max() > 0:
+        lluvia_fuerte = precipitacion > 2.0
+        print(f"   - Días con lluvia > 2mm: {lluvia_fuerte.sum()} ({lluvia_fuerte.mean()*100:.1f}%)")
+        
+    if viento_velocidad.max() > 0:
+        viento_fuerte = viento_velocidad > 15
+        print(f"   - Días con viento > 15 km/h: {viento_fuerte.sum()} ({viento_fuerte.mean()*100:.1f}%)")
+    
+    return retrasos
 
 def adaptar_dataset_real(df):
     """
@@ -145,7 +200,7 @@ def adaptar_dataset_real(df):
     else:
         df_adaptado['nubosidad'] = 40  # Valor por defecto
 
-    # LÓGICA determinista basada en condiciones climáticas
+    # ✅ CORRECCIÓN PRINCIPAL: Usar la función corregida
     df_adaptado['retraso_vuelo'] = generar_etiqueta_retraso(df_adaptado)
 
     print(f"Dataset adaptado: {len(df_adaptado)} registros")
@@ -177,13 +232,13 @@ def procesar_datos_clima(df):
         
         # Crear features de condiciones extremas basadas en datos reales
         if 'precipitacion' in df_procesado.columns:
-            df_procesado['lluvia_fuerte'] = (df_procesado['precipitacion'] > 5).astype(int)
+            df_procesado['lluvia_fuerte'] = (df_procesado['precipitacion'] > 2.0).astype(int)  # Umbral reducido
         
         if 'viento_velocidad' in df_procesado.columns:
-            df_procesado['viento_fuerte'] = (df_procesado['viento_velocidad'] > 20).astype(int)
+            df_procesado['viento_fuerte'] = (df_procesado['viento_velocidad'] > 15).astype(int)  # Umbral reducido
         
         if 'visibilidad' in df_procesado.columns:
-            df_procesado['baja_visibilidad'] = (df_procesado['visibilidad'] < 8).astype(int)
+            df_procesado['baja_visibilidad'] = (df_procesado['visibilidad'] < 10).astype(int)  # Umbral ajustado
         
         # Manejo más robusto de valores faltantes
         columnas_numericas = df_procesado.select_dtypes(include=[np.number]).columns
@@ -467,106 +522,91 @@ def validar_calidad_datos(df):
 
 def obtener_datos_clima_reales(ciudad, fecha=None, hora=None):
     """
-    Obtiene datos climáticos futuros (si se especifica fecha y hora) o actuales (por defecto) de OpenWeather.
+    Obtiene datos climáticos futuros usando Weatherbit API (240 horas de pronóstico).
 
     Args:
         ciudad (str): Nombre de la ciudad
-        fecha (str): Fecha en formato YYYY-MM-DD (opcional)
-        hora (str): Hora en formato HH:MM (opcional)
+        fecha (str): Fecha en formato YYYY-MM-DD
+        hora (str): Hora en formato HH:MM
 
     Returns:
-        dict: Diccionario con variables climáticas clave
+        dict: Diccionario con variables climáticas clave para predicción
     """
     if not API_KEY:
-        print("❌ No se encontró la clave API de OpenWeather.")
+        print("❌ No se encontró la clave API de Weatherbit.")
         return {}
 
     try:
-        # Si se da fecha y hora, usar API de pronóstico
+        # Convertir fecha y hora en datetime objetivo
+        target_dt = None
         if fecha and hora:
-            print("📅 Solicitando clima pronosticado...")
-            url = f"http://api.openweathermap.org/data/2.5/forecast?q={ciudad}&appid={API_KEY}&units=metric"
             target_dt = datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
-        else:
-            print("📍 Solicitando clima actual...")
-            url = f"http://api.openweathermap.org/data/2.5/weather?q={ciudad}&appid={API_KEY}&units=metric"
-            target_dt = None
 
-        response = requests.get(url)
+        print("📅 Solicitando pronóstico horario (Weatherbit)...")
+        url = "https://api.weatherbit.io/v2.0/forecast/hourly"
+        params = {
+            "city": ciudad,
+            "country": "PE",
+            "key": API_KEY,
+            "lang": "es",
+            "hours": 240
+        }
+
+        response = requests.get(url, params=params)
         data = response.json()
 
-        if response.status_code != 200:
-            print("❌ Error en respuesta de OpenWeather:", data)
+        if response.status_code != 200 or 'data' not in data:
+            print("❌ Error en respuesta de Weatherbit:", data)
             return {}
 
-        # Si se usa pronóstico
-        if 'list' in data:
-            forecast_data = data['list']
-            closest_block = min(forecast_data, key=lambda x: abs(datetime.utcfromtimestamp(x['dt']) - target_dt))
-            block = closest_block
-        else:
-            block = data  # clima actual
+        # Usar fecha objetivo o UTC actual
+        if not target_dt:
+            target_dt = datetime.utcnow()
 
-        # Extraer datos comunes
-        temperatura = block['main']['temp']
-        humedad = block['main']['humidity']
-        presion = block['main']['pressure']
-        visibilidad = block.get('visibility', 10000)  # en metros
-        viento_velocidad = block['wind']['speed']
-        nubosidad = block['clouds']['all']
-        
-        # Detectar precipitación real (si existe el campo rain)
-        rain_data = block.get('rain', {})
-        if 'list' in data:
-            precipitacion = rain_data.get('3h', 0.0)  # Pronóstico
-        else:
-            precipitacion = rain_data.get('1h', 0.0)  # Clima actual
+        # Buscar el bloque más cercano a la hora solicitada
+        closest = min(
+            data['data'],
+            key=lambda d: abs(datetime.fromisoformat(d['timestamp_local']) - target_dt)
+        )
 
-        # Imprimir para depurar
-        if rain_data:
-            print(f"🌧️ Lluvia detectada: {rain_data}")
-        else:
-            print("🌤️ No hay campo de lluvia (rain). Se asume 0 mm.")
+        # Extraer y adaptar campos
+        temperatura = closest['temp']
+        humedad = closest['rh']
+        presion = closest['pres']
+        visibilidad = closest.get('vis', 10)
+        viento_velocidad = closest['wind_spd'] * 3.6
+        nubosidad = closest.get('clouds', 0)
+        precipitacion = closest.get('precip', 0.0)
 
-        # Timestamp
-        timestamp = block.get('dt')
-        dt_utc = datetime.fromtimestamp(timestamp, tz=timezone.utc) if timestamp else None
-        dt_peru = dt_utc - timedelta(hours=5) if dt_utc else None
+        dt_local = datetime.fromisoformat(closest['timestamp_local'])
 
-        # === 🔍 TRAZABILIDAD (para verificar que corresponde con lo pedido) ===
-        print("\n🧪 VERIFICACIÓN DE PRONÓSTICO")
-        print(f"🌍 Ciudad solicitada: {ciudad}")
-        print(f"📆 Fecha objetivo enviada: {fecha}")
-        print(f"⏰ Hora objetivo enviada: {hora}")
-        print(f"🕒 Fecha/hora solicitada: {target_dt}")
-        print(f"🕓 Fecha/hora real del pronóstico (UTC): {dt_utc}")
-        print(f"🕓 Fecha/hora real del pronóstico (Perú): {dt_peru}")
-        print(f"📦 Datos del bloque más cercano:")
-        print(json.dumps(block, indent=2))
+        print("\n✅ VERIFICACIÓN DE WEATHERBIT:")
+        print(f"🌍 Ciudad: {ciudad}")
+        print(f"📆 Fecha objetivo: {fecha}")
+        print(f"⏰ Hora objetivo: {hora}")
+        print(f"🕒 Hora exacta recibida (local): {dt_local}")
+        print(f"📦 Bloque más cercano:\n{json.dumps(closest, indent=2)}")
 
-        clima = {
+        return {
             'temperatura': round(temperatura, 1),
             'humedad': humedad,
             'presion': presion,
-            'visibilidad': round(visibilidad / 1000, 1),  # a km
-            'viento_velocidad': round(viento_velocidad * 3.6, 1),  # m/s → km/h
+            'visibilidad': visibilidad,
+            'viento_velocidad': round(viento_velocidad, 1),
             'nubosidad': nubosidad,
             'precipitacion': precipitacion,
-            'fecha_observacion_utc': dt_utc.strftime('%Y-%m-%d %H:%M:%S UTC') if dt_utc else 'N/A',
-            'fecha_observacion_peru': dt_peru.strftime('%Y-%m-%d %H:%M:%S (UTC-5)') if dt_peru else 'N/A',
-            'fecha_predicha_openweather_utc': dt_utc.strftime('%Y-%m-%d %H:%M:%S') if dt_utc else 'N/A',
+            'fecha_observacion_utc': dt_local.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC'),
+            'fecha_observacion_peru': (dt_local - timedelta(hours=5)).strftime('%Y-%m-%d %H:%M:%S (UTC-5)'),
+            'fecha_predicha_weatherbit': dt_local.strftime('%Y-%m-%d %H:%M:%S'),
             'ciudad': ciudad,
             'fecha_solicitada': fecha,
             'hora_solicitada': hora
         }
 
-        print("🔍 JSON recibido de OpenWeather:", json.dumps(block, indent=2))
-
-        return clima
-
     except Exception as e:
-        print(f"⚠️ Error al obtener datos climáticos: {e}")
+        print(f"⚠️ Error al obtener datos climáticos (Weatherbit): {e}")
         return {}
+
 
 if __name__ == "__main__":
     ciudad = "Cajamarca"

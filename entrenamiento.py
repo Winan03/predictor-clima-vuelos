@@ -8,6 +8,7 @@ from sklearn.metrics import classification_report, confusion_matrix, roc_auc_sco
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
+from firebase_service import FirebaseService
 from procesamiento import cargar_datos_s3, procesar_datos_clima, preparar_features, validar_calidad_datos, adaptar_dataset_real, diagnostico_features_antes_del_escalado, analizar_aporte_nuevas_features
 import warnings
 warnings.filterwarnings('ignore')
@@ -347,8 +348,13 @@ class ModeloClimaVuelos:
         except Exception as e:
             print(f"Error en predicción: {str(e)}")
             return None
-
     
+    def obtener_precision_modelo(self):
+        if not self.metricas:
+            return 0.0
+        mejor_nombre = max(self.metricas, key=lambda k: self.metricas[k]['auc'])
+        return self.metricas[mejor_nombre]['auc'] * 100  # para convertir a porcentaje
+
     def predecir_probabilidad(self, datos_nuevos):
         """
         Obtiene las probabilidades de cancelación
@@ -425,16 +431,27 @@ def main():
     if datos is not None:
         # Entrenar modelos
         modelo_vuelos.entrenar_modelos(datos)
-        
+
         # Mostrar métricas
         modelo_vuelos.mostrar_metricas()
-        
+
         # Guardar modelo
         modelo_vuelos.guardar_modelo()
-        
+
         # Generar reporte
         modelo_vuelos.generar_reporte_completo()
-        
+
+        # 🔥 ACTUALIZAR FIREBASE CON PRECISIÓN REAL
+        firebase = FirebaseService()
+        if firebase.initialized:
+            precision = modelo_vuelos.obtener_precision_modelo()
+            firebase.actualizar_estadisticas(
+                predicciones_hoy=0,                # o puedes poner la cantidad real si la tienes
+                precision_modelo=precision,
+                retrasos_evitados=0,
+                ahorro_estimado=0
+            )
+
         print("\n¡Entrenamiento completado exitosamente!")
     else:
         print("Error: No se pudieron cargar los datos")

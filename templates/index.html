@@ -366,7 +366,7 @@
             display: block;
             margin-bottom: 6px;
             font-weight: 500;
-            color: #fff;
+            color: #111827;;
             font-size: 0.95rem;
         }
 
@@ -1036,7 +1036,7 @@
             <div class="header">
                 <div class="header-content">
                     <div class="text-container">
-                      <h1>🛩️ Predictor de Retrasos de Vuelos</h1>
+                      <h1>🛩️ Sistema Predicto FlyAware</h1>
                       <p>Sistema inteligente de predicción basado en condiciones climáticas</p>
                     </div>
                   
@@ -1058,6 +1058,18 @@
                         <div id="vuelos-container">
                             <div class="vuelo-group" data-index="0">
                                 <h3>Vuelo 1</h3>
+                                <div class="form-group">
+                                    <label>Ciudad de Origen:</label>
+                                    <select id="origen" name="origen" required>
+                                      <option value="">Seleccionar ciudad...</option>
+                                      <option value="lima">Lima</option>
+                                      <option value="arequipa">Arequipa</option>
+                                      <option value="trujillo">Trujillo</option>
+                                      <option value="piura">Piura</option>
+                                      <option value="cajamarca">Cajamarca</option>
+                                      <option value="puno">Puno</option>
+                                    </select>
+                                </div>
                                 <div class="form-group">
                                     <label>Ciudad de Destino:</label>
                                     <select id="ciudad" name="ciudad" required>
@@ -1532,15 +1544,6 @@
         }
     }
 
-
-        // ============= FUNCIONES DE LA APLICACIÓN PRINCIPAL =============
-        document.addEventListener('DOMContentLoaded', function() {
-            const fechaInput = document.getElementById('fecha');
-            if (fechaInput) {
-                fechaInput.min = new Date().toISOString().split('T')[0];
-            }
-        });
-
         function generarDatosVuelo() {
             const ciudades = ['lima', 'arequipa', 'trujillo', 'piura', 'cajamarca', 'puno'];
             const pasajeros = [80, 95, 110, 120, 135, 150, 165, 180];
@@ -1617,61 +1620,57 @@
         // ============= MANEJO DEL FORMULARIO DE PREDICCIÓN =============
         document.getElementById('prediction-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            if (!currentUser || !currentUser.uid) {
-                showError('Error de sesión: no se detectó correctamente el usuario');
-                return;
-            }
 
-            if (!currentUser) {
+            if (!currentUser || !currentUser.uid) {
                 showError('Debe iniciar sesión para realizar predicciones');
                 return;
             }
 
-            console.log("🔥 currentUser:", currentUser);
-
             const vuelosGroups = document.querySelectorAll('.vuelo-group');
-            let vueloSinPrediccion = null;
             let formData = null;
-            let indiceVuelo = -1;
+            let vueloTarget = null;
+            let indexVuelo = -1;
 
             for (let i = 0; i < vuelosGroups.length; i++) {
                 const group = vuelosGroups[i];
                 if (!group.classList.contains('predicted')) {
                     const inputs = group.querySelectorAll('input, select');
-
                     const data = {
-                        ciudad: inputs[0].value,
-                        fecha: inputs[1].value,
-                        hora: inputs[2].value,
-                        pasajeros: parseInt(inputs[3].value),
-                        costo: parseFloat(inputs[4].value),
-                        user_id: currentUser.uid // ← NUEVO: Agregar user_id
+                        origen: inputs[0].value,
+                        ciudad: inputs[1].value,
+                        fecha: inputs[2].value,
+                        hora: inputs[3].value,
+                        pasajeros: parseInt(inputs[4].value),
+                        costo: parseFloat(inputs[5].value),
+                        user_id: currentUser.uid
                     };
 
-                    if (!data.ciudad || !data.fecha || !data.hora) {
-                        showError('Por favor, complete todos los campos del vuelo ' + (i + 1));
+                    if (!data.origen || !data.ciudad || !data.fecha || !data.hora) {
+                        showError(`Complete todos los campos del Vuelo ${i + 1}`);
                         return;
                     }
 
-                    if (yaFuePredicho(data.ciudad, data.fecha, data.hora)) {
-                        showWarning(`El vuelo ${i + 1} (${data.ciudad.toUpperCase()} - ${data.fecha} ${data.hora}) ya fue predicho anteriormente.`);
+                    if (data.origen === data.ciudad) {
+                        showError(`❌ En el Vuelo ${i + 1}, la ciudad de origen y destino no pueden ser iguales.`);
                         return;
                     }
 
-                    vueloSinPrediccion = group;
+                    vueloTarget = group;
                     formData = data;
-                    indiceVuelo = i + 1;
+                    indexVuelo = i + 1;
                     break;
                 }
             }
 
-            if (!vueloSinPrediccion) {
-                showWarning('Todos los vuelos ya han sido predichos. Agregue un nuevo vuelo para realizar una nueva predicción.');
+
+            if (!formData) {
+                showWarning('Todos los vuelos ya fueron procesados');
                 return;
             }
 
-            console.log('Enviando datos:', formData);
+            const idVuelo = crearIdVuelo(formData.ciudad, formData.fecha, formData.hora);
+            const esRepetido = yaFuePredicho(formData.ciudad, formData.fecha, formData.hora);
+
             showLoading(true);
 
             try {
@@ -1683,44 +1682,42 @@
                     body: JSON.stringify(formData)
                 });
 
-                console.log("🛬 Respuesta del servidor:", response);
-
                 if (!response.ok) {
-                    let errorText = `Error HTTP: ${response.status}`;
+                    let mensajeError = `Error HTTP: ${response.status}`;
                     try {
-                        const errorData = await response.json();
-                        errorText = errorData.error || errorText;
-                    } catch (e) {
-                        console.warn("⚠️ No se pudo parsear JSON del error");
-                    }
-                    throw new Error(errorText);
+                        const data = await response.json();
+                        mensajeError = data.error || mensajeError;
+                    } catch (e) {}
+                    throw new Error(mensajeError);
                 }
-
 
                 const result = await response.json();
-                
+
                 showResults(result);
-                mostrarBurbujaPrediccion(`✈️ Vuelo ${formData.ciudad.toUpperCase()} predicho`);
-                marcarComoPredicho(formData.ciudad, formData.fecha, formData.hora, vueloSinPrediccion);
+                mostrarBurbujaPrediccion(`✈️ ${formData.ciudad.toUpperCase()} predicho`);
                 
-                let mensaje = `Predicción completada para el Vuelo ${indiceVuelo} (${formData.ciudad.toUpperCase()} - ${formData.fecha} ${formData.hora}).`;
-                if (result.ahorro_estimado > 0) {
-                    mensaje += ` Ahorro estimado: $${result.ahorro_estimado}`;
+                if (!esRepetido) {
+                    vuelosPredichos.add(idVuelo); // solo si no era repetido
+                    marcarComoPredicho(formData.ciudad, formData.fecha, formData.hora, vueloTarget);
+                    vueloTarget.classList.add('predicted');
                 }
-                if (result.firebase_guardado) {
-                    mensaje += ' ✅ Guardado en Firebase';
-                }
-                
+
+                let mensaje = `Vuelo ${indexVuelo} (${formData.ciudad.toUpperCase()} - ${formData.fecha} ${formData.hora}) procesado.`;
+                if (esRepetido) mensaje += ' ⚠️ Ya había sido predicho antes (pero se volvió a guardar).';
+                if (result.ahorro_estimado) mensaje += ` Ahorro estimado: $${result.ahorro_estimado}`;
+                if (result.firebase_guardado) mensaje += ' ✅ Guardado en Firebase';
+
                 showSuccess(mensaje);
                 loadStats();
-                
+
             } catch (error) {
-                console.error('Error de conexión:', error);
-                showError('Error de conexión: ' + error.message);
+                console.error('Error en predicción:', error);
+                showError(error.message);
             } finally {
                 showLoading(false);
             }
         });
+
 
         function showLoading(show) {
             const button = document.getElementById('predict-btn');
@@ -1818,6 +1815,7 @@
 
             container.insertAdjacentHTML('beforeend', vueloHTML);
             showSuccess(`Nuevo vuelo agregado con hora única (${datosAleatorios.hora}). Ajuste los detalles según sea necesario.`);
+            configurarSelectsVuelos();
         }
 
         function eliminarVuelo(btn) {
@@ -1973,16 +1971,6 @@
                 }
             });
         }
-
-        // ============= INICIALIZACIÓN =============
-        // Configurar fecha mínima al cargar la página
-        document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date().toISOString().split('T')[0];
-            const fechaInputs = document.querySelectorAll('input[type="date"]');
-            fechaInputs.forEach(input => {
-                input.min = today;
-            });
-        });
 
         // ============= MANEJO DE ERRORES GLOBALES =============
         window.addEventListener('error', function(e) {
@@ -2257,8 +2245,71 @@
             });
         }
 
-        // ============= INICIALIZACIÓN FINAL =============
+        // ============= FUNCIONES DE DESARROLLO (solo para testing) =============
+        function debugMode() {
+            console.log('=== DEBUG MODE ===');
+            console.log('Vuelos predichos:', Array.from(vuelosPredichos));
+            console.log('Contador vuelos:', contadorVuelos);
+            console.log('Usuario actual:', currentUser);
+            console.log('Modelo Firebase inicializado:', firebase.apps.length > 0);
+            console.log('Predicciones realizadas:', prediccionesRealizadas);
+            console.log('Ahorro acumulado:', ahorroAcumulado);
+        }
+
+        function configurarSelectsVuelos() {
+            const grupos = document.querySelectorAll('.vuelo-group');
+
+            grupos.forEach(grupo => {
+                const origen = grupo.querySelector('select[name="origen"]');
+                const destino = grupo.querySelector('select[name="ciudad"]');
+
+                // Verificar que ambos selects existan
+                if (!origen || !destino) return;
+
+                function sincronizarSelects() {
+                    const origenVal = origen.value;
+                    const destinoVal = destino.value;
+
+                    // Habilita todas las opciones primero
+                    Array.from(destino.options).forEach(op => op.disabled = false);
+                    Array.from(origen.options).forEach(op => op.disabled = false);
+
+                    // Si origen ya está seleccionado, deshabilita esa ciudad en el destino
+                    if (origenVal) {
+                        const opDestino = destino.querySelector(`option[value="${origenVal}"]`);
+                        if (opDestino) opDestino.disabled = true;
+                    }
+
+                    // Si destino ya está seleccionado, deshabilita esa ciudad en el origen
+                    if (destinoVal) {
+                        const opOrigen = origen.querySelector(`option[value="${destinoVal}"]`);
+                        if (opOrigen) opOrigen.disabled = true;
+                    }
+                }
+
+                // Remover event listeners existentes para evitar duplicados
+                origen.removeEventListener('change', sincronizarSelects);
+                destino.removeEventListener('change', sincronizarSelects);
+
+                // Agregar event listeners
+                origen.addEventListener('change', sincronizarSelects);
+                destino.addEventListener('change', sincronizarSelects);
+                sincronizarSelects(); // Inicializa
+            });
+        }
+
+        // ============= INICIALIZACIÓN CONSOLIDADA =============
         document.addEventListener('DOMContentLoaded', function() {
+            // Configurar fecha mínima para todos los inputs de fecha
+            const today = new Date().toISOString().split('T')[0];
+            const fechaInputs = document.querySelectorAll('input[type="date"]');
+            fechaInputs.forEach(input => {
+                input.min = today;
+            });
+
+            // Configurar selects de vuelos
+            configurarSelectsVuelos();
+
             // Inicializar monitoreo
             monitoreRRender();
             
@@ -2273,7 +2324,8 @@
                 // Ctrl + Enter para predecir
                 if (e.ctrlKey && e.key === 'Enter') {
                     e.preventDefault();
-                    document.getElementById('prediction-form').dispatchEvent(new Event('submit'));
+                    const form = document.getElementById('prediction-form');
+                    if (form) form.dispatchEvent(new Event('submit'));
                 }
                 
                 // Ctrl + N para nuevo vuelo
@@ -2295,17 +2347,6 @@
             console.log('   Ctrl + N: Agregar nuevo vuelo');
             console.log('   Ctrl + R: Limpiar formulario');
         });
-
-        // ============= FUNCIONES DE DESARROLLO (solo para testing) =============
-        function debugMode() {
-            console.log('=== DEBUG MODE ===');
-            console.log('Vuelos predichos:', Array.from(vuelosPredichos));
-            console.log('Contador vuelos:', contadorVuelos);
-            console.log('Usuario actual:', currentUser);
-            console.log('Modelo Firebase inicializado:', firebase.apps.length > 0);
-            console.log('Predicciones realizadas:', prediccionesRealizadas);
-            console.log('Ahorro acumulado:', ahorroAcumulado);
-        }
 
         // Hacer disponible para consola
         window.debugMode = debugMode;

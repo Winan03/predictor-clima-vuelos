@@ -7,7 +7,7 @@ import requests
 import os
 from procesamiento import procesar_datos_clima, preparar_features, obtener_datos_clima_reales
 from entrenamiento import ModeloClimaVuelos
-from firebase_service import FirebaseService  # <-- NUEVO IMPORT
+from firebase_service import FirebaseService 
 
 app = Flask(__name__)
 
@@ -20,7 +20,7 @@ retrasos_evitados = 0
 ahorro_estimado = 0
 
 # Inicializar Firebase Service
-firebase_service = FirebaseService()  # <-- NUEVO
+firebase_service = FirebaseService()  
 
 # Cargar modelo entrenado desde S3 o local
 def cargar_modelo():
@@ -69,52 +69,51 @@ def index():
 @app.route('/predecir', methods=['POST'])
 def predecir_retraso():
     """
-    MODIFICADO: Endpoint de predicción que guarda en Firebase
+    Endpoint de predicción que guarda en Firebase y considera clima de origen y destino por separado.
     """
     try:
         data = request.json
-        
+
         ciudad = data.get('ciudad')
+        origen = data.get('origen')
         fecha = data.get('fecha')
         hora = data.get('hora')
-        pasajeros = data.get('pasajeros', 120)  
+        pasajeros = data.get('pasajeros', 120)
         costo = data.get('costo', 100.0)
-        user_id = data.get('user_id')  # <-- NUEVO: ID del usuario (opcional)
+        user_id = data.get('user_id')
 
-        
-        # Validar datos de entrada
-        if not ciudad or not fecha or not hora:
-            return jsonify({'error': 'Faltan datos requeridos: ciudad, fecha, hora'}), 400
-        
+        if not ciudad or not origen or not fecha or not hora:
+            return jsonify({'error': 'Faltan datos requeridos: ciudad, origen, fecha, hora'}), 400
+
         # Obtener datos climáticos
-        datos_clima = obtener_datos_clima_reales(ciudad, fecha, hora)
-        
-        # Convertir fecha y hora
-        try:
-            dt = datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
-        except ValueError:
-            return jsonify({'error': 'Formato de fecha/hora inválido. Use YYYY-MM-DD HH:MM'}), 400
-        
+        clima_destino = obtener_datos_clima_reales(ciudad, fecha, hora)
+        clima_origen = obtener_datos_clima_reales(origen, fecha, hora)
+
+        # Guardar ambos por separado
+        datos_clima_origen = clima_origen
+        datos_clima_destino = clima_destino
+
+        # Fusionar para predicción
+        datos_clima = {
+            "temperatura": round((clima_origen["temperatura"] + clima_destino["temperatura"]) / 2, 1),
+            "precipitacion": round(clima_origen["precipitacion"] + clima_destino["precipitacion"], 1),
+            "viento_velocidad": max(clima_origen["viento_velocidad"], clima_destino["viento_velocidad"]),
+            "presion": round((clima_origen["presion"] + clima_destino["presion"]) / 2, 1),
+            "visibilidad": min(clima_origen.get("visibilidad", 10), clima_destino.get("visibilidad", 10)),
+            "nubosidad": max(clima_origen.get("nubosidad", 0), clima_destino.get("nubosidad", 0))
+        }
+
+        dt = datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
+
         if modelo:
             try:
-                # Crear DataFrame con SOLO las columnas que el modelo espera
-                # Primero intentar obtener las columnas esperadas del modelo
-                if hasattr(modelo, 'columnas_esperadas') and modelo.columnas_esperadas:
-                    columnas_modelo = modelo.columnas_esperadas
-                else:
-                    # Usar columnas básicas si no se pueden obtener del modelo
-                    columnas_modelo = [
-                        'temperatura', 'precipitacion', 'viento_velocidad', 'presion',
-                        'hora', 'dia_semana', 'mes', 'es_fin_semana', 
-                        'lluvia_fuerte', 'viento_fuerte'
-                    ]
-                
-                print(f"Columnas que espera el modelo: {columnas_modelo}")
-                
-                # Crear DataFrame solo con las columnas necesarias
+                columnas_modelo = modelo.columnas_esperadas if hasattr(modelo, 'columnas_esperadas') else [
+                    'temperatura', 'precipitacion', 'viento_velocidad', 'presion',
+                    'hora', 'dia_semana', 'mes', 'es_fin_semana',
+                    'lluvia_fuerte', 'viento_fuerte'
+                ]
+
                 data_dict = {}
-                
-                # Mapear datos climáticos a las columnas esperadas
                 for col in columnas_modelo:
                     if col == 'temperatura':
                         data_dict[col] = datos_clima.get('temperatura', 22.0)
@@ -137,84 +136,63 @@ def predecir_retraso():
                     elif col == 'viento_fuerte':
                         data_dict[col] = int(datos_clima.get('viento_velocidad', 0) > 20)
                     else:
-                        # Para cualquier otra columna, usar valor por defecto
                         data_dict[col] = 0
-                
-                # Crear DataFrame
-                df_nuevo = pd.DataFrame([data_dict])
-                
-                print(f"DataFrame para predicción:")
-                print(f"Columnas: {list(df_nuevo.columns)}")
-                print(f"Valores: {df_nuevo.iloc[0].to_dict()}")
 
-                # Preparar features
+                df_nuevo = pd.DataFrame([data_dict])
+
                 X_nuevo, _, _, _, _ = preparar_features(
                     df_nuevo,
-                    columnas_target=[],  # No hay columna target en predicción
+                    columnas_target=[],
                     scaler=modelo.scaler,
                     label_encoders=modelo.label_encoders
                 )
-                # Si hay valores vacíos o infinitos, los reemplazo por 0
+
                 if X_nuevo.isnull().any().any() or np.isinf(X_nuevo.values).any():
-                    print("⚠️ Había datos vacíos o inválidos. Se limpiaron.")
                     X_nuevo = X_nuevo.replace([np.inf, -np.inf], 0).fillna(0)
 
-                if X_nuevo is None or X_nuevo.empty:
+                if X_nuevo.empty:
                     return jsonify({'error': 'Error preparando features para predicción'}), 500
-                
-                print(f"Shape de X_nuevo: {X_nuevo.shape}")
-                print(f"Columnas de X_nuevo: {list(X_nuevo.columns)}")
-                
-                # Realizar predicción
+
                 prediccion = modelo.modelo.predict(X_nuevo)[0]
 
-                # Intentar obtener la probabilidad de retraso con seguridad
                 try:
                     probabilidad = modelo.modelo.predict_proba(X_nuevo)[0]
-                    prob_retraso = float(probabilidad[1]) * 100  # En porcentaje
-                except Exception as e:
-                    print("⚠️ Falló al calcular la probabilidad:", e)
+                    prob_retraso = float(probabilidad[1]) * 100
+                except Exception:
+                    probabilidad = [100.0, 0.0]
                     prob_retraso = 0.0
-                    probabilidad = [100.0, 0.0]  # Default si algo sale mal
-                
-                print("🔍 Probabilidad cruda:", probabilidad)
 
-                # Asignar nivel de riesgo más sensible
-                if prob_retraso > 60:
-                    riesgo = "alto"
-                elif prob_retraso > 30:
-                    riesgo = "medio"
-                else:
-                    riesgo = "bajo"
-                
-                # Calcular confianza
+                riesgo = "alto" if prob_retraso > 60 else "medio" if prob_retraso > 30 else "bajo"
                 confianza = max(probabilidad) * 100
-                
-                # Interpretar resultados
+
                 resultado = {
                     'prediccion': bool(prediccion),
                     'probabilidad_retraso': prob_retraso,
                     'probabilidad_puntual': float(probabilidad[0]) * 100,
                     'confianza': float(confianza),
-                    'riesgo': riesgo,  # <- Esta línea es clave
+                    'riesgo': riesgo,
                     'factores_riesgo': analizar_factores_riesgo(datos_clima, dt),
                     'recomendaciones': generar_recomendaciones(datos_clima, prediccion),
                     'datos_clima': datos_clima,
+                    'datos_clima_origen': datos_clima_origen,
+                    'datos_clima_destino': datos_clima_destino,
                     'fecha_hora': f"{fecha} {hora}",
-                    'ciudad': ciudad
+                    'origen': origen,
+                    'ciudad': ciudad,
+                    'pasajeros': pasajeros,
+                    'costo': costo
                 }
-                
+
                 global contador_predicciones, retrasos_evitados, ahorro_estimado
                 contador_predicciones += 1
 
-                if prediccion:  
+                if prediccion:
                     retrasos_evitados += 1
                     ahorro_estimado += round(pasajeros * costo)
                     resultado['ahorro_estimado'] = round(pasajeros * costo)
                 else:
                     resultado['ahorro_estimado'] = 0
 
-                # ============= NUEVO: GUARDAR EN FIREBASE =============
                 try:
                     firebase_service.guardar_prediccion_vuelo(
                         ciudad=ciudad,
@@ -223,34 +201,30 @@ def predecir_retraso():
                         resultado_prediccion=resultado,
                         user_id=user_id
                     )
-                    
-                    # Actualizar estadísticas en Firebase
-                    precision_modelo = 98.6  # Puedes obtener esto del modelo real
+
                     firebase_service.actualizar_estadisticas(
                         predicciones_hoy=contador_predicciones,
-                        precision_modelo=precision_modelo,
+                        precision_modelo=98.6,
                         retrasos_evitados=retrasos_evitados,
                         ahorro_estimado=ahorro_estimado
                     )
-                    
+
                     resultado['firebase_guardado'] = True
-                    print("✅ Datos guardados en Firebase")
-                    
                 except Exception as firebase_error:
                     print(f"⚠️ Error guardando en Firebase: {firebase_error}")
                     resultado['firebase_guardado'] = False
-                # ===================================================
 
                 return jsonify(resultado)
-                
+
             except Exception as e:
                 print(f"Error en predicción: {e}")
                 import traceback
                 traceback.print_exc()
                 return jsonify({'error': f'Error en predicción: {str(e)}'}), 500
+
         else:
             return jsonify({'error': 'Modelo no disponible'}), 500
-            
+
     except Exception as e:
         print(f"Error general en predicción: {e}")
         import traceback
@@ -258,54 +232,80 @@ def predecir_retraso():
         return jsonify({'error': f'Error procesando solicitud: {str(e)}'}), 500
 
 def analizar_factores_riesgo(datos_clima, fecha_hora):
+    """
+    Analiza los factores meteorológicos que influyen en la predicción de retraso,
+    utilizando los mismos umbrales que en la función generar_etiqueta_retraso().
+    """
     factores = []
 
-    # Precipitación
-    if datos_clima['precipitacion'] > 10:
-        factores.append({'factor': 'Lluvia muy fuerte', 'nivel': 'alto', 'valor': f"{datos_clima['precipitacion']} mm"})
-    elif datos_clima['precipitacion'] > 5:
-        factores.append({'factor': 'Lluvia moderada', 'nivel': 'medio', 'valor': f"{datos_clima['precipitacion']} mm"})
-    elif datos_clima['precipitacion'] > 1:
-        factores.append({'factor': 'Lluvia ligera', 'nivel': 'bajo', 'valor': f"{datos_clima['precipitacion']} mm"})
+    # Precipitación > 2.0 mm
+    if datos_clima['precipitacion'] > 2.0:
+        factores.append({
+            'factor': 'Lluvia significativa',
+            'nivel': 'medio',
+            'valor': f"{datos_clima['precipitacion']} mm",
+            'descripcion': 'Puede afectar la operación en pista y visibilidad.'
+        })
 
-    # Viento
-    if datos_clima['viento_velocidad'] > 35:
-        factores.append({'factor': 'Viento muy fuerte', 'nivel': 'alto', 'valor': f"{datos_clima['viento_velocidad']} km/h"})
-    elif datos_clima['viento_velocidad'] > 25:
-        factores.append({'factor': 'Viento fuerte', 'nivel': 'medio', 'valor': f"{datos_clima['viento_velocidad']} km/h"})
-    elif datos_clima['viento_velocidad'] > 15:
-        factores.append({'factor': 'Viento moderado', 'nivel': 'bajo', 'valor': f"{datos_clima['viento_velocidad']} km/h"})
+    # Viento > 15 km/h
+    if datos_clima['viento_velocidad'] > 15:
+        factores.append({
+            'factor': 'Viento moderado',
+            'nivel': 'medio',
+            'valor': f"{datos_clima['viento_velocidad']} km/h",
+            'descripcion': 'Puede generar turbulencias o demoras en el aterrizaje.'
+        })
 
-    # Visibilidad (si está disponible)
-    if 'visibilidad' in datos_clima:
-        if datos_clima['visibilidad'] < 5:
-            factores.append({'factor': 'Visibilidad muy baja', 'nivel': 'alto', 'valor': f"{datos_clima['visibilidad']} km"})
-        elif datos_clima['visibilidad'] < 8:
-            factores.append({'factor': 'Visibilidad reducida', 'nivel': 'medio', 'valor': f"{datos_clima['visibilidad']} km"})
+    # Temperatura < 8 °C o > 32 °C
+    if datos_clima['temperatura'] < 8:
+        factores.append({
+            'factor': 'Temperatura baja',
+            'nivel': 'bajo',
+            'valor': f"{datos_clima['temperatura']}°C",
+            'descripcion': 'Temperaturas bajas pueden afectar equipos en tierra.'
+        })
+    elif datos_clima['temperatura'] > 32:
+        factores.append({
+            'factor': 'Temperatura alta',
+            'nivel': 'bajo',
+            'valor': f"{datos_clima['temperatura']}°C",
+            'descripcion': 'Altas temperaturas pueden alterar la densidad del aire.'
+        })
 
-    # Temperatura extrema
-    if datos_clima['temperatura'] > 40:
-        factores.append({'factor': 'Temperatura muy alta', 'nivel': 'medio', 'valor': f"{datos_clima['temperatura']}°C"})
-    elif datos_clima['temperatura'] < 0:
-        factores.append({'factor': 'Temperatura bajo cero', 'nivel': 'medio', 'valor': f"{datos_clima['temperatura']}°C"})
+    # Presión < 1005 hPa
+    if datos_clima['presion'] < 1005:
+        factores.append({
+            'factor': 'Presión atmosférica baja',
+            'nivel': 'bajo',
+            'valor': f"{datos_clima['presion']} hPa",
+            'descripcion': 'Presión baja está asociada a mal clima general.'
+        })
 
-    # Presión atmosférica
-    if datos_clima['presion'] < 995:
-        factores.append({'factor': 'Presión muy baja (tormenta)', 'nivel': 'alto', 'valor': f"{datos_clima['presion']} hPa"})
-    elif datos_clima['presion'] < 1005:
-        factores.append({'factor': 'Presión baja', 'nivel': 'medio', 'valor': f"{datos_clima['presion']} hPa"})
-
-    # Nubosidad (si está disponible)
-    if 'nubosidad' in datos_clima:
-        if datos_clima['nubosidad'] > 80:
-            factores.append({'factor': 'Cielo muy nublado', 'nivel': 'bajo', 'valor': f"{datos_clima['nubosidad']}%"})
+    # Visibilidad < 10 km
+    if datos_clima['visibilidad'] < 10:
+        factores.append({
+            'factor': 'Visibilidad reducida',
+            'nivel': 'bajo',
+            'valor': f"{datos_clima['visibilidad']} km",
+            'descripcion': 'Puede dificultar maniobras de aterrizaje y despegue.'
+        })
 
     # Factores temporales
     if fecha_hora.hour in [6, 7, 8, 18, 19, 20]:
-        factores.append({'factor': 'Hora pico de tráfico aéreo', 'nivel': 'bajo', 'valor': f"{fecha_hora.hour}:00"})
+        factores.append({
+            'factor': 'Hora pico de operaciones',
+            'nivel': 'bajo',
+            'valor': f"{fecha_hora.hour}:00",
+            'descripcion': 'Mayor tráfico aéreo puede causar demoras logísticas.'
+        })
 
     if fecha_hora.weekday() >= 5:
-        factores.append({'factor': 'Fin de semana', 'nivel': 'bajo', 'valor': 'Mayor tráfico'})
+        factores.append({
+            'factor': 'Fin de semana',
+            'nivel': 'bajo',
+            'valor': 'Mayor tráfico de pasajeros',
+            'descripcion': 'Los fines de semana suelen tener mayor congestión en aeropuertos.'
+        })
 
     return factores
 
@@ -433,35 +433,34 @@ def obtener_clima_actual(ciudad):
 def estadisticas():
     """Endpoint para mostrar estadísticas de la aplicación"""
     try:
-        # Obtener estadísticas desde Firebase
+        # Obtener estadísticas persistentes desde Firebase
         stats_firebase = firebase_service.obtener_estadisticas()
-        
-        # Combinar con estadísticas locales
-        estadisticas_completas = {
-            'predicciones_realizadas': contador_predicciones,
-            'retrasos_evitados': retrasos_evitados,
-            'ahorro_estimado_usd': int(ahorro_estimado),
-            'modelo_precision': '98.6%',
-            'firebase_stats': stats_firebase,
-            'modelo_cargado': modelo is not None,
-            'firebase_conectado': firebase_service.initialized,
+
+        # Obtener valores directamente de Firebase
+        predicciones_hoy = stats_firebase.get('predicciones_hoy', 0)
+        retrasos_ev = stats_firebase.get('retrasos_ev', 0)
+        ahorro_usd = stats_firebase.get('ahorro_estimado_usd', 0)
+        modelo_precision = stats_firebase.get('modelo_precision', '0%')
+
+        return jsonify({
+            'predicciones_realizadas': predicciones_hoy,
+            'retrasos_evitados': retrasos_ev,
+            'ahorro_estimado_usd': int(ahorro_usd),
+            'modelo_precision': modelo_precision,
             'timestamp': datetime.now().isoformat()
-        }
-        
-        return jsonify(estadisticas_completas)
-        
+        })
+
     except Exception as e:
         print(f"Error obteniendo estadísticas: {e}")
         return jsonify({
-            'predicciones_realizadas': contador_predicciones,
-            'retrasos_evitados': retrasos_evitados,
-            'ahorro_estimado_usd': int(ahorro_estimado),
-            'modelo_precision': '98.6%',
-            'modelo_cargado': modelo is not None,
-            'firebase_conectado': firebase_service.initialized,
-            'error': 'Error obteniendo estadísticas de Firebase',
+            'predicciones_realizadas': 0,
+            'retrasos_evitados': 0,
+            'ahorro_estimado_usd': 0,
+            'modelo_precision': '0%',
+            'error': 'Error obteniendo estadísticas',
             'timestamp': datetime.now().isoformat()
         })
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

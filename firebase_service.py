@@ -50,53 +50,40 @@ class FirebaseService:
     
     def guardar_prediccion_vuelo(self, ciudad, fecha, hora, resultado_prediccion, user_id=None):
         """
-        Guarda una predicción de vuelo en Firebase
-        
-        Args:
-            ciudad (str): Ciudad destino
-            fecha (str): Fecha del vuelo (YYYY-MM-DD)
-            hora (str): Hora del vuelo (HH:MM)
-            resultado_prediccion (dict): Resultado completo de la predicción
-            user_id (str): ID del usuario (opcional)
-        
-        Returns:
-            bool: True si se guardó correctamente
+        Guarda una predicción de vuelo en Firebase, incluyendo clima de origen y destino por separado.
         """
         if not self.initialized:
             print("❌ Firebase no está inicializado")
             return False
-        
+
         try:
             ref = db.reference()
             timestamp = int(datetime.now().timestamp() * 1000)
-            
-            # Estructura para vuelos_predichos
+
+            clima_destino = resultado_prediccion.get('datos_clima_destino', {})
+            clima_origen = resultado_prediccion.get('datos_clima_origen', {})
+
             vuelo_data = {
                 "probabilidad": resultado_prediccion.get('probabilidad_retraso', 0),
                 "riesgo": resultado_prediccion.get('riesgo', 'bajo'),
                 "status": self._get_status_from_riesgo(resultado_prediccion.get('riesgo', 'bajo')),
-                "clima": {
-                    "temperatura": resultado_prediccion.get('datos_clima', {}).get('temperatura', 0),
-                    "tmin": resultado_prediccion.get('datos_clima', {}).get('temperatura', 0) - 2,  # Estimado
-                    "tmax": resultado_prediccion.get('datos_clima', {}).get('temperatura', 0) + 2,  # Estimado
-                    "precipitacion": resultado_prediccion.get('datos_clima', {}).get('precipitacion', 0),
-                    "viento": resultado_prediccion.get('datos_clima', {}).get('viento_velocidad', 0),
-                    "presion": resultado_prediccion.get('datos_clima', {}).get('presion', 1013),
-                    "visibilidad": resultado_prediccion.get('datos_clima', {}).get('visibilidad', 10),
-                    "nubes": resultado_prediccion.get('datos_clima', {}).get('nubosidad', None)
-                },
+                "clima_origen": clima_origen,
+                "clima_destino": clima_destino,
                 "recomendaciones": resultado_prediccion.get('recomendaciones', []),
                 "generado_por": "modeloIA",
                 "timestamp": timestamp
             }
-            
-            # Guardar en vuelos_predichos
+
             vuelos_ref = ref.child('vuelos_predichos').child(ciudad).child(fecha).child(hora)
             vuelos_ref.set(vuelo_data)
-            
-            # Si hay user_id, también guardar en users
+
             if user_id:
                 flight_id = self._generate_flight_id(ciudad, fecha, hora, user_id)
+                clima_origen = resultado_prediccion.get('datos_clima_origen', {})
+                clima_destino = resultado_prediccion.get('datos_clima_destino', {})
+                pasajeros = resultado_prediccion.get('pasajeros', 120)
+                costo = resultado_prediccion.get('costo', 100.0)
+
                 user_flight_data = {
                     "destination": ciudad,
                     "date": fecha,
@@ -104,16 +91,36 @@ class FirebaseService:
                     "probabilidad": resultado_prediccion.get('probabilidad_retraso', 0),
                     "riesgo": resultado_prediccion.get('riesgo', 'bajo'),
                     "status": self._get_status_from_riesgo(resultado_prediccion.get('riesgo', 'bajo')),
-                    "origin": "Lima",  # Puedes hacer esto dinámico
-                    "saved_at": datetime.now().isoformat()
+                    "origin": resultado_prediccion.get('origen', 'Desconocido'),
+                    "saved_at": datetime.now().isoformat(),
+                    "pasajeros": pasajeros,
+                    "costo": costo,
+                    "clima_origen": {
+                        "temperatura": clima_origen.get("temperatura", 0),
+                        "precipitacion": clima_origen.get("precipitacion", 0),
+                        "viento_velocidad": clima_origen.get("viento_velocidad", 0),
+                        "presion": clima_origen.get("presion", 1013),
+                        "visibilidad": clima_origen.get("visibilidad", 10),
+                        "nubosidad": clima_origen.get("nubosidad", 0)
+                    },
+                    "clima_destino": {
+                        "temperatura": clima_destino.get("temperatura", 0),
+                        "precipitacion": clima_destino.get("precipitacion", 0),
+                        "viento_velocidad": clima_destino.get("viento_velocidad", 0),
+                        "presion": clima_destino.get("presion", 1013),
+                        "visibilidad": clima_destino.get("visibilidad", 10),
+                        "nubosidad": clima_destino.get("nubosidad", 0)
+                    },
+                    "modificado_manualmente": False
                 }
-                
+
                 user_ref = ref.child('users').child(user_id.replace('.', '_').replace('@', '_')).child('flights').child(flight_id)
                 user_ref.set(user_flight_data)
-            
+
+
             print(f"✅ Predicción guardada: {ciudad} - {fecha} {hora}")
             return True
-            
+
         except Exception as e:
             print(f"❌ Error guardando predicción: {e}")
             return False
