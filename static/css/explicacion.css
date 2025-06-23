@@ -1,0 +1,419 @@
+/* ===== ESTILOS PARA EXPLICACIÓN DETALLADA ===== */
+
+/* Resumen automático que aparece después de la predicción */
+.prediction-summary {
+    background: linear-gradient(135deg, #f8f9ff 0%, #e8f4f8 100%);
+    border: 2px solid #4a6cf7;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 4px 15px rgba(74, 108, 247, 0.1);
+}
+
+.summary-text {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0 0 15px 0;
+    line-height: 1.5;
+}
+
+.explain-btn {
+    background: linear-gradient(135deg, #4a6cf7 0%, #5a7cfa 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 10px rgba(74, 108, 247, 0.3);
+}
+
+.explain-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(74, 108, 247, 0.4);
+    background: linear-gradient(135deg, #3d5af1 0%, #4c6bfb 100%);
+}
+
+/* Modal de explicación detallada */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: white;
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #4a6cf7 0%, #5a7cfa 100%);
+    color: white;
+    padding: 20px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.4em;
+    font-weight: 700;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 2em;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s ease;
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.modal-body {
+    padding: 30px;
+    max-height: 60vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #4a6cf7 #f1f1f1;
+}
+
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #4a6cf7;
+    border-radius: 3px;
+}
+
+.explanation-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.explanation-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.explanation-section h3 {
+    color: #2d3748;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+    font-weight: 700;
+}
+
+/* Resumen de riesgo en el modal */
+.risk-summary-modal {
+    background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+    border-radius: 12px;
+    padding: 20px;
+    border-left: 5px solid #4a6cf7;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+/* Grid de variables */
+.variables-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.variable-card {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px;
+    border-left: 4px solid #4a6cf7;
+    transition: transform 0.2s ease;
+}
+
+.variable-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.variable-name {
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 5px;
+}
+
+.variable-value {
+    font-size: 1.1em;
+    color: #4a6cf7;
+    font-weight: 600;
+}
+
+.variable-impact {
+    font-size: 0.9em;
+    color: #666;
+    margin-top: 5px;
+}
+
+/* Detalles meteorológicos */
+.weather-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.weather-item {
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+    border: 1px solid #b3d9ff;
+}
+
+.weather-icon {
+    font-size: 2em;
+    margin-bottom: 8px;
+}
+
+.weather-label {
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 5px;
+}
+
+.weather-value {
+    font-size: 1.2em;
+    color: #4a6cf7;
+    font-weight: 700;
+}
+
+/* Factores de riesgo */
+.risk-factors-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.risk-factor {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.risk-factor.high {
+    background: #fee2e2;
+    border-left: 4px solid #ef4444;
+    color: #991b1b;
+}
+
+.risk-factor.medium {
+    background: #fef3c7;
+    border-left: 4px solid #f59e0b;
+    color: #92400e;
+}
+
+.risk-factor.low {
+    background: #dcfce7;
+    border-left: 4px solid #22c55e;
+    color: #166534;
+}
+
+.risk-icon {
+    margin-right: 10px;
+    font-size: 1.2em;
+}
+
+/* Recomendaciones detalladas */
+.recommendations-detailed {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.recommendation-item {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border-radius: 10px;
+    padding: 15px;
+    border-left: 4px solid #22c55e;
+    display: flex;
+    align-items: flex-start;
+}
+
+.recommendation-icon {
+    font-size: 1.5em;
+    margin-right: 12px;
+    margin-top: 2px;
+}
+
+.recommendation-content {
+    flex: 1;
+}
+
+.recommendation-title {
+    font-weight: 700;
+    color: #166534;
+    margin-bottom: 5px;
+}
+
+.recommendation-description {
+    color: #15803d;
+    line-height: 1.5;
+}
+
+/* Explicación del modelo */
+.model-explanation {
+    background: linear-gradient(135deg, #fafafa 0%, #f4f4f5 100%);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #e4e4e7;
+}
+
+.model-explanation p {
+    margin-bottom: 12px;
+    color: #374151;
+    line-height: 1.6;
+}
+
+.model-explanation ul {
+    margin: 15px 0;
+    padding-left: 20px;
+}
+
+.model-explanation li {
+    margin-bottom: 8px;
+    color: #374151;
+    line-height: 1.5;
+}
+
+.model-explanation strong {
+    color: #4a6cf7;
+}
+
+/* Footer del modal */
+.modal-footer {
+    background: #f8f9fa;
+    padding: 20px 30px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    font-size: 0.95em;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4a6cf7 0%, #5a7cfa 100%);
+    color: white;
+    box-shadow: 0 3px 10px rgba(74, 108, 247, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(74, 108, 247, 0.4);
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #4a5568;
+    border: 1px solid #cbd5e0;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e0;
+    transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .modal-header {
+        padding: 15px 20px;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .modal-footer {
+        padding: 15px 20px;
+        flex-direction: column;
+    }
+    
+    .variables-grid,
+    .weather-details {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-header h2 {
+        font-size: 1.2em;
+    }
+    
+    .btn-primary, .btn-secondary {
+        width: 100%;
+        margin: 5px 0;
+    }
+}

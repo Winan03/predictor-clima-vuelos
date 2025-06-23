@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial de Predicciones - FlyAware</title>
+    <!-- Carga Tailwind CSS directamente si no lo haces con @import en tu CSS local -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="/static/css/historial.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <div class="text-container">
+                    <h1>📊 Historial de Predicciones</h1>
+                    <p>Registro completo de todas sus predicciones realizadas</p>
+                </div>
+                <div class="profile-container">
+                    <button onclick="volverAlInicio()" class="btn-volver">← Volver al Inicio</button>
+                    <div class="user-icon" onclick="toggleUserMenu()">
+                        <img id="profile-pic" src="/static/default-profile.png" alt="Perfil" />
+                    </div>
+                    <div id="user-menu" class="user-menu hidden">
+                        <p id="user-name">Usuario</p>
+                        <button onclick="logoutUser()">Cerrar Sesión</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Filtros -->
+            <div class="filtros-section" id="filtros-section">
+                <div class="filtros-container">
+                    <div class="filtro-grupo">
+                        <label for="filtro-fecha-desde">Desde:</label>
+                        <input type="date" id="filtro-fecha-desde">
+                    </div>
+                    <div class="filtro-grupo">
+                        <label for="filtro-fecha-hasta">Hasta:</label>
+                        <input type="date" id="filtro-fecha-hasta">
+                    </div>
+                    <div class="filtro-grupo">
+                        <label for="filtro-origen">Origen:</label>
+                        <select id="filtro-origen">
+                            <option value="">Todos</option>
+                            <option value="lima">Lima</option>
+                            <option value="arequipa">Arequipa</option>
+                            <option value="trujillo">Trujillo</option>
+                            <option value="piura">Piura</option>
+                            <option value="cajamarca">Cajamarca</option>
+                            <option value="puno">Puno</option>
+                        </select>
+                    </div>
+                    <div class="filtro-grupo">
+                        <label for="filtro-riesgo">Riesgo:</label>
+                        <select id="filtro-riesgo">
+                            <option value="">Todos</option>
+                            <option value="bajo">Bajo</option>
+                            <option value="medio">Medio</option>
+                            <option value="alto">Alto</option>
+                        </select>
+                    </div>
+                    <button onclick="aplicarFiltros()" class="btn-filtrar">Filtrar</button>
+                    <button onclick="limpiarFiltros()" class="btn-limpiar">Limpiar</button>
+                </div>
+            </div>
+
+            <!-- Estadísticas Rápidas -->
+            <div class="stats-rapidas" id="stats-rapidas">
+                <div class="stat-rapida">
+                    <div class="stat-numero" id="total-predicciones">-</div>
+                    <div class="stat-label">Total Predicciones</div>
+                </div>
+                <div class="stat-rapida">
+                    <div class="stat-numero" id="riesgo-alto-count">-</div>
+                    <div class="stat-label">Riesgo Alto</div>
+                </div>
+                <div class="stat-rapida">
+                    <div class="stat-numero" id="precision-promedio">-</div>
+                    <div class="stat-label">Precisión Promedio</div>
+                </div>
+            </div>
+
+            <!-- Tabla de Historial -->
+            <div class="historial-container">
+                <div id="loading-historial" class="loading-container hidden">
+                    <div class="loading-spinner"></div>
+                    <p>Cargando historial...</p>
+                </div>
+
+                <div id="historial-vacio" class="historial-vacio hidden" style="display: none;">
+                    <img src="/static/flight-predict.png" alt="Sin predicciones" style="max-width: 200px; opacity: 0.5;">
+                    <h3>No hay predicciones</h3>
+                    <p>Aún no has realizado ninguna predicción o no hay resultados para los filtros aplicados.</p>
+                </div>
+
+                <div id="historial-tabla" class="tabla-container">
+                    <table class="historial-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha/Hora</th>
+                                <th>Vuelo</th>
+                                <th>Ruta</th>
+                                <th>Riesgo</th>
+                                <th>Probabilidad</th>
+                                <th>Clima</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historial-tbody">
+                            <!-- Contenido dinámico -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                <div class="paginacion" id="paginacion-container">
+                    <button id="btn-anterior" onclick="cambiarPagina(-1)">← Anterior</button>
+                    <span id="info-pagina">Página 1 de 1</span>
+                    <button id="btn-siguiente" onclick="cambiarPagina(1)">Siguiente →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Detalles -->
+        <div id="modal-detalles" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Detalles de la Predicción</h3>
+                    <span class="modal-close" onclick="cerrarModal()">&times;</span>
+                </div>
+                <div class="modal-body" id="modal-body-content">
+                    <!-- Contenido dinámico -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Deben ir antes de tu script personalizado) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <!-- Si usas Firestore en el cliente -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+    <script>
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDtgbgt93iRiucXkGa6mjD6U9bxHTrpKMI",
+            authDomain: "sistema-predictivo-aereo.firebaseapp.com",
+            databaseURL: "https://sistema-predictivo-aereo-default-rtdb.firebaseio.com",
+            projectId: "sistema-predictivo-aereo",
+            storageBucket: "sistema-predictivo-aereo.appspot.com",
+            messagingSenderId: "828520564895",
+            appId: "1:828520564895:web:9a134b38c5cf377c997aaa",
+            measurementId: "G-1YX5EXQKD7"
+        };
+
+        // Inicializa Firebase variables globalmente pero asigna condicionalmente
+        let app;
+        let auth;
+        let db;
+        let currentUser = null; // Declara currentUser aquí también.
+        
+        // Variables globales para la paginación y datos
+        let currentPage = 1;
+        let itemsPerPage = 10;
+        let allPredicciones = [];
+        let filteredPredicciones = [];
+
+        // Solo inicializar Firebase si la configuración está disponible y es válida
+        if (firebaseConfig && firebaseConfig.apiKey) { // Asegurarse de que el apiKey exista
+            app = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            console.log("Firebase inicializado con la configuración de Canvas.");
+        } else {
+            console.error("La configuración de Firebase falta o es inválida. No se puede inicializar Firebase.");
+            // Si la configuración no está disponible o es inválida, mostrar el mensaje de acceso denegado inmediatamente.
+            document.addEventListener('DOMContentLoaded', function() {
+                mostrarAccesoDenegado();
+            });
+        }
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (!app) { // Si Firebase no se inicializó correctamente, salir.
+                return;
+            }
+
+            // Ahora que la autenticación inicial se ha intentado, verifica el estado.
+            verificarAutenticacion();
+            configurarFechasPorDefecto();
+            // La carga del historial se realizará dentro de verificarAutenticacion una vez el usuario esté listo.
+        });
+
+        function verificarAutenticacion() {
+            if (!auth) {
+                mostrarAccesoDenegado();
+                return;
+            }
+            auth.onAuthStateChanged(function(user) {
+                if (user) {
+                    currentUser = user;
+                    document.getElementById('user-name').textContent = user.displayName || user.email;
+                    if (user.photoURL) {
+                        document.getElementById('profile-pic').src = user.photoURL;
+                    }
+                    // Si el usuario está autenticado, cargar el historial.
+                    cargarHistorial(); 
+                } else {
+                    // Si no está autenticado, mostrar el mensaje de acceso denegado.
+                    mostrarAccesoDenegado();
+                }
+            });
+        }
+
+        function mostrarAccesoDenegado() {
+            mostrarLoading(false); // Ocultar el spinner de carga
+            document.getElementById('filtros-section')?.classList.add('hidden'); // Ocultar filtros
+            document.getElementById('stats-rapidas')?.classList.add('hidden'); // Ocultar estadísticas
+            document.getElementById('historial-tabla').classList.add('hidden'); // Ocultar la tabla
+            document.getElementById('paginacion-container').classList.add('hidden'); // Ocultar paginación
+
+            const historialVacioDiv = document.getElementById('historial-vacio');
+            historialVacioDiv.classList.remove('hidden'); // Mostrar el div de historial vacío
+            historialVacioDiv.innerHTML = `
+                <img src="/static/flight-predict.png" alt="Sin predicciones" style="max-width: 200px; opacity: 0.5;">
+                <h3>Acceso Denegado</h3>
+                <p>Por favor, <a href="/" class="text-blue-600 hover:underline font-semibold">inicia sesión</a> para ver tu historial de predicciones.</p>
+                <button onclick="window.location.href='/'" class="btn-volver mt-4">Ir a Iniciar Sesión</button>
+            `;
+        }
+
+
+        function configurarFechasPorDefecto() {
+            const hoy = new Date();
+            const hace30Dias = new Date();
+            hace30Dias.setDate(hoy.getDate() - 30);
+
+            document.getElementById('filtro-fecha-hasta').value = hoy.toISOString().split('T')[0];
+            document.getElementById('filtro-fecha-desde').value = hace30Dias.toISOString().split('T')[0];
+        }
+
+        async function cargarHistorial() {
+            mostrarLoading(true);
+            
+            // Asegurar que los filtros y estadísticas estén visibles si el usuario está autenticado
+            if (currentUser) {
+                document.getElementById('filtros-section')?.classList.remove('hidden');
+                document.getElementById('stats-rapidas')?.classList.remove('hidden');
+            }
+
+            try {
+                if (!currentUser) {
+                    throw new Error('Usuario no autenticado. No se puede cargar el historial.');
+                }
+
+                const fetchUrl = `${window.location.origin}/historial-predicciones/${currentUser.uid}`;
+                console.log('🌐 Fetching desde:', fetchUrl);
+                
+                const response = await fetch(fetchUrl);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('El servidor respondió con status no OK:', response.status, response.statusText);
+                    console.error('Body de la respuesta del servidor:', errorText);
+                    throw new Error(`Error del servidor al cargar historial: ${response.status} ${response.statusText}`);
+                }
+
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    const data = await response.json();
+                    console.log('📦 Datos recibidos:', data);
+                    
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    
+                    allPredicciones = data.predicciones || [];
+                    console.log(`✅ ${allPredicciones.length} predicciones cargadas`);
+                    
+                } else {
+                    const errorText = await response.text();
+                    console.error('Se esperaba JSON pero se recibió:', contentType);
+                    console.error('Respuesta cruda:', errorText.substring(0, 200), '...');
+                    throw new SyntaxError('El servidor no devolvió JSON válido. Posible error en el backend.');
+                }
+                
+                // Asegurar que la fecha sea un objeto Date para filtros
+                allPredicciones = allPredicciones.map(pred => {
+                    let fecha;
+                    try {
+                        fecha = new Date(pred.timestamp);
+                        if (isNaN(fecha)) throw new Error();
+                    } catch {
+                        fecha = new Date(); // Fecha por defecto si falla
+                    }
+
+                    return {
+                        ...pred,
+                        timestamp: fecha
+                    };
+                });
+
+                // Aplicar filtros y actualizar estadísticas
+                aplicarFiltros();
+                actualizarEstadisticasRapidas();
+
+            } catch (error) {
+                console.error('Error al cargar historial:', error);
+                mostrarError(`Error al cargar historial de predicciones: ${error.message}. Por favor, intenta nuevamente.`);
+                
+                // Ocultar elementos si hay error en la carga (no por autenticación)
+                document.getElementById('historial-vacio').classList.remove('hidden');
+                document.getElementById('historial-tabla').classList.add('hidden');
+                document.getElementById('paginacion-container').classList.add('hidden');
+
+                // Mantener filtros y estadísticas visibles si el usuario está autenticado
+                if (!currentUser) {
+                    document.getElementById('filtros-section')?.classList.add('hidden');
+                    document.getElementById('stats-rapidas')?.classList.add('hidden');
+                }
+
+            } finally {
+                // IMPORTANTE: Siempre ocultar el loading
+                mostrarLoading(false);
+                
+                // Mostrar filtros y estadísticas si hay usuario autenticado
+                if (currentUser && document.getElementById('historial-vacio').classList.contains('hidden')) {
+                    document.getElementById('filtros-section')?.classList.remove('hidden');
+                    document.getElementById('stats-rapidas')?.classList.remove('hidden');
+                }
+            }
+        }
+
+        function aplicarFiltros() {
+            const fechaDesde = document.getElementById('filtro-fecha-desde').value;
+            const fechaHasta = document.getElementById('filtro-fecha-hasta').value;
+            const origen = document.getElementById('filtro-origen').value;
+            const riesgo = document.getElementById('filtro-riesgo').value;
+
+            filteredPredicciones = allPredicciones.filter(prediccion => {
+                // Filtrar por fecha
+                // Asegurarse de que prediccion.timestamp sea un objeto Date
+                const fechaPrediccion = prediccion.timestamp instanceof Date ? prediccion.timestamp.toISOString().split('T')[0] : '';
+                if (fechaDesde && fechaPrediccion < fechaDesde) return false;
+                if (fechaHasta && fechaPrediccion > fechaHasta) return false;
+
+                // Filtrar por origen
+                if (origen && prediccion.origen?.toLowerCase() !== origen.toLowerCase()) return false;
+
+                // Filtrar por riesgo
+                if (riesgo && prediccion.riesgo?.toLowerCase() !== riesgo.toLowerCase()) return false;
+
+                return true;
+            });
+
+            currentPage = 1;
+            renderizarTabla();
+            actualizarPaginacion();
+        }
+
+        function limpiarFiltros() {
+            document.getElementById('filtro-origen').value = '';
+            document.getElementById('filtro-riesgo').value = '';
+            configurarFechasPorDefecto();
+            aplicarFiltros();
+        }
+
+        function renderizarTabla() {
+            const tbody = document.getElementById('historial-tbody');
+            const inicio = (currentPage - 1) * itemsPerPage;
+            const fin = inicio + itemsPerPage;
+            const prediccionesPagina = filteredPredicciones.slice(inicio, fin);
+
+            const tabla = document.getElementById('historial-tabla');
+            const vacio = document.getElementById('historial-vacio');
+            const paginacion = document.getElementById('paginacion-container');
+
+            if (prediccionesPagina.length === 0) {
+                vacio.classList.remove('hidden');
+                vacio.style.display = 'block';
+                tabla.classList.add('hidden');
+                paginacion.classList.add('hidden');
+                tbody.innerHTML = '';
+                mostrarLoading(false);
+                return;
+            }
+
+            vacio.classList.add('hidden');
+            vacio.style.display = 'none';
+            tabla.classList.remove('hidden');
+            paginacion.classList.remove('hidden');
+
+            tbody.innerHTML = prediccionesPagina.map(prediccion => {
+                const temperaturaClima = prediccion.datos_clima?.temperatura ?? 'N/A';
+                const precipitacionClima = prediccion.datos_clima?.precipitacion ?? 'N/A';
+                const fecha = new Date(prediccion.timestamp).toLocaleString('es-PE');
+                const riesgoClass = `riesgo-${prediccion.riesgo || 'bajo'}`;
+
+                return `
+                    <tr>
+                        <td>${fecha}</td>
+                        <td>
+                            <div class="vuelo-info">
+                                <strong>${prediccion.numero_vuelo || 'N/A'}</strong>
+                                <small>${prediccion.fecha_hora || 'N/A'}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="ruta-info">
+                                ${prediccion.origen?.toUpperCase() || 'N/A'} → ${prediccion.ciudad?.toUpperCase() || 'N/A'}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge ${riesgoClass}">${prediccion.riesgo?.toUpperCase() || 'N/A'}</span>
+                        </td>
+                        <td>
+                            <div class="probabilidad-info">
+                                <strong>${prediccion.probabilidad_retraso?.toFixed(1) || '0.0'}%</strong>
+                                <div class="mini-bar">
+                                    <div class="mini-fill" style="width: ${prediccion.probabilidad_retraso || 0}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="clima-mini">
+                                <span>🌡️ ${temperaturaClima}°C</span>
+                                <span>🌧️ ${precipitacionClima}mm</span>
+                            </div>
+                        </td>
+                        <td>
+                            <button onclick="verDetalles('${prediccion.id}')" class="btn-ver-detalles">Ver Detalles</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            mostrarLoading(false);
+        }
+
+
+        function actualizarPaginacion() {
+            const totalPaginas = Math.ceil(filteredPredicciones.length / itemsPerPage);
+            
+            document.getElementById('info-pagina').textContent = `Página ${currentPage} de ${totalPaginas || 1}`; // Mostrar 1 de 1 si no hay páginas
+            document.getElementById('btn-anterior').disabled = currentPage === 1;
+            document.getElementById('btn-siguiente').disabled = currentPage === totalPaginas || totalPaginas === 0; // Deshabilitar siguiente si no hay páginas
+            
+            if (totalPaginas <= 1 && filteredPredicciones.length === 0) { // Ocultar paginación solo si no hay elementos
+                 document.getElementById('paginacion-container').classList.add('hidden');
+            } else if (totalPaginas <= 1) { // Mostrar paginación si hay items pero solo una página
+                document.getElementById('paginacion-container').classList.remove('hidden');
+            } else {
+                document.getElementById('paginacion-container').classList.remove('hidden');
+            }
+        }
+
+        function cambiarPagina(direccion) {
+            const totalPaginas = Math.ceil(filteredPredicciones.length / itemsPerPage);
+            const nuevaPagina = currentPage + direccion;
+            
+            if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas) {
+                currentPage = nuevaPagina;
+                renderizarTabla();
+                actualizarPaginacion();
+            }
+        }
+
+        function actualizarEstadisticasRapidas() {
+            const total = allPredicciones.length;
+            const riesgoAlto = allPredicciones.filter(p => p.riesgo?.toLowerCase() === 'alto').length;
+            const precisionPromedio = total > 0 ? 
+                allPredicciones.reduce((sum, p) => sum + (p.confianza || 0), 0) / total : 0;
+
+            document.getElementById('total-predicciones').textContent = total;
+            document.getElementById('riesgo-alto-count').textContent = riesgoAlto;
+            document.getElementById('precision-promedio').textContent = `${precisionPromedio.toFixed(1)}%`;
+        }
+
+        function verDetalles(prediccionId) {
+            const prediccion = allPredicciones.find(p => p.id === prediccionId);
+            if (!prediccion) return;
+
+            const modalContent = `
+                <div class="detalle-prediccion">
+                    <div class="detalle-header">
+                        <h4>Predicción del ${new Date(prediccion.timestamp).toLocaleString('es-PE')}</h4>
+                    </div>
+                    
+                    <div class="detalle-section">
+                        <h5>📋 Información del Vuelo</h5>
+                        <div class="detalle-grid">
+                            <div><strong>Número de Vuelo:</strong> ${prediccion.numero_vuelo || 'N/A'}</div>
+                            <div><strong>Origen:</strong> ${prediccion.origen?.toUpperCase() || 'N/A'}</div>
+                            <div><strong>Destino:</strong> ${prediccion.ciudad?.toUpperCase() || 'N/A'}</div>
+                            <div><strong>Fecha/Hora:</strong> ${prediccion.fecha_hora || 'N/A'}</div>
+                            <div><strong>Pasajeros:</strong> ${prediccion.pasajeros || 'N/A'}</div>
+                            <div><strong>Costo:</strong> $${(prediccion.costo !== undefined ? prediccion.costo : 'N/A')}</div>
+                        </div>
+                    </div>
+
+                    <div class="detalle-section">
+                        <h5>🎯 Resultado de la Predicción</h5>
+                        <div class="prediccion-resultado">
+                            <div class="riesgo-grande badge riesgo-${prediccion.riesgo || 'bajo'}">
+                                ${prediccion.riesgo?.toUpperCase() || 'N/A'}
+                            </div>
+                            <div class="probabilidades">
+                                <div><strong>Probabilidad de Retraso:</strong> ${prediccion.probabilidad_retraso?.toFixed(1) || '0.0'}%</div>
+                                <div><strong>Probabilidad Puntual:</strong> ${prediccion.probabilidad_puntual?.toFixed(1) || '0.0'}%</div>
+                                <div><strong>Confianza:</strong> ${prediccion.confianza?.toFixed(1) || '0.0'}%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detalle-section">
+                        <h5>🌤️ Condiciones Climáticas</h5>
+                        <div class="clima-detalle">
+                            <div class="clima-origen">
+                                <h6>Origen (${prediccion.origen?.toUpperCase() || 'N/A'})</h6>
+                                <ul>
+                                    <li>Temperatura: ${prediccion.datos_clima_origen?.temperatura !== undefined ? prediccion.datos_clima_origen.temperatura : 'N/A'}°C</li>
+                                    <li>Precipitación: ${prediccion.datos_clima_origen?.precipitacion !== undefined ? prediccion.datos_clima_origen.precipitacion : 'N/A'}mm</li>
+                                    <li>Viento: ${prediccion.datos_clima_origen?.viento_velocidad !== undefined ? prediccion.datos_clima_origen.viento_velocidad : 'N/A'}km/h</li>
+                                    <li>Presión: ${prediccion.datos_clima_origen?.presion !== undefined ? prediccion.datos_clima_origen.presion : 'N/A'}hPa</li>
+                                </ul>
+                            </div>
+                            <div class="clima-destino">
+                                <h6>Destino (${prediccion.ciudad?.toUpperCase() || 'N/A'})</h6>
+                                <ul>
+                                    <li>Temperatura: ${prediccion.datos_clima_destino?.temperatura !== undefined ? prediccion.datos_clima_destino.temperatura : 'N/A'}°C</li>
+                                    <li>Precipitación: ${prediccion.datos_clima_destino?.precipitacion !== undefined ? prediccion.datos_clima_destino.precipitacion : 'N/A'}mm</li>
+                                    <li>Viento: ${prediccion.datos_clima_destino?.viento_velocidad !== undefined ? prediccion.datos_clima_destino.viento_velocidad : 'N/A'}km/h</li>
+                                    <li>Presión: ${prediccion.datos_clima_destino?.presion !== undefined ? prediccion.datos_clima_destino.presion : 'N/A'}hPa</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detalle-section">
+                        <h5>💡 Recomendaciones</h5>
+                        <ul class="recomendaciones-lista">
+                            ${prediccion.recomendaciones?.map(rec => `<li>${rec}</li>`).join('') || '<li>No hay recomendaciones disponibles</li>'}
+                        </ul>
+                    </div>
+
+                    ${prediccion.factores_riesgo?.length > 0 ? `
+                        <div class="detalle-section">
+                            <h5>⚠️ Factores de Riesgo</h5>
+                            <div class="factores-riesgo">
+                                ${prediccion.factores_riesgo.map(factor => `
+                                    <div class="factor-item">
+                                        <div class="factor-header">
+                                            <span class="factor-badge nivel-${factor.nivel || 'bajo'}">${factor.factor || 'N/A'}</span>
+                                            <span class="factor-valor">${factor.valor || 'N/A'}</span>
+                                        </div>
+                                        <div class="factor-descripcion">${factor.descripcion || 'N/A'}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            document.getElementById('modal-body-content').innerHTML = modalContent;
+            document.getElementById('modal-detalles').classList.remove('hidden');
+        }
+
+        function cerrarModal() {
+            document.getElementById('modal-detalles').classList.add('hidden');
+        }
+
+        function mostrarLoading(mostrar) {
+            const loading = document.getElementById('loading-historial');
+            if (mostrar) {
+                loading.classList.remove('hidden');
+                loading.style.display = 'flex';  // o 'block' si usas block-level
+            } else {
+                loading.classList.add('hidden');
+                loading.style.display = 'none';  // 🔥 esto lo forza
+            }
+        }
+
+
+        function mostrarError(mensaje) {
+            // Reemplazar alert() con un mensaje en consola y manejo más suave
+            console.error(`Error de la aplicación: ${mensaje}`);
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md shadow-lg z-5000';
+            errorDiv.innerHTML = `<strong class="font-bold">¡Error!</strong><span class="block sm:inline ml-2">${mensaje}</span>`;
+            document.body.appendChild(errorDiv);
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000); // El mensaje desaparece después de 5 segundos
+        }
+
+        function volverAlInicio() {
+            window.location.href = '/';
+        }
+
+        function toggleUserMenu() {
+            const menu = document.getElementById('user-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        function logoutUser() {
+            auth.signOut().then(() => { // Usar la variable 'auth'
+                window.location.href = '/';
+            }).catch((error) => {
+                console.error("Error al cerrar sesión: ", error);
+                mostrarError("No se pudo cerrar sesión. Por favor, intente de nuevo.");
+            });
+        }
+
+        // Cerrar modal al hacer clic fuera
+        window.onclick = function(event) {
+            const modal = document.getElementById('modal-detalles');
+            if (event.target === modal) {
+                cerrarModal();
+            }
+            // Cerrar menú de usuario si se hace clic fuera
+            const userIcon = document.querySelector('.user-icon');
+            const userMenu = document.getElementById('user-menu');
+            if (!userIcon.contains(event.target) && !userMenu.contains(event.target) && !userMenu.classList.contains('hidden')) {
+                userMenu.classList.add('hidden');
+            }
+        }
+
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUser = user;
+                showMainApp();
+
+                const name = user.displayName || 'Usuario';
+                const photo = user.photoURL || '/static/default-profile.png';
+
+                document.getElementById('user-name').textContent = name;
+                document.getElementById('profile-pic').src = photo;
+
+                loadStats();
+            } else {
+                currentUser = null;
+                showAuthSection();
+            }
+        });
+
+    </script>
+</body>
+</html>

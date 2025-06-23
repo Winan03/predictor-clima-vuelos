@@ -1,0 +1,1005 @@
+/*
+ * historial.css
+ *
+ * Este archivo CSS proporciona estilos personalizados para la página de historial,
+ * complementando y extendiendo las utilidades de Tailwind CSS para lograr
+ * un diseño moderno y COHERENTE con la estética de la página principal.
+ *
+ * AJUSTADO para un tema con FONDO DEGRADADO y CONTENEDORES BLANCOS LIMPIOS.
+ * También incluye estilos para el perfil de usuario con iniciales/imagen.
+ */
+
+/*
+ * -----------------------------------------------------------------------------
+ * Estilos Generales y Resets
+ * -----------------------------------------------------------------------------
+ */
+
+/* Fuente base para toda la aplicación */
+body {
+    font-family: 'Inter', sans-serif; /* Usamos Inter como se sugiere para apps web */
+    background: linear-gradient(to bottom right, #70B3FF, #A57BFF); /* Fondo con degradado azul a morado, similar al principal */
+    color: #4A4A4A; /* Color de texto base oscuro para buen contraste en fondos claros */
+    min-height: 100vh; /* Asegura que el cuerpo ocupe al menos toda la altura de la ventana */
+    display: flex; /* Para centrar el contenido principal */
+    flex-direction: column;
+}
+
+/* Contenedor principal de la aplicación */
+.container {
+    max-width: 1200px; /* Ancho máximo para el contenido */
+    margin: 2rem auto; /* Margen automático para centrar horizontalmente */
+    padding: 1.5rem; /* Espaciado interno */
+    background-color: #FFFFFF; /* Fondo blanco limpio para el contenedor principal */
+    border-radius: 1.5rem; /* Bordes redondeados */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); /* Sombra suave para profundidad */
+    flex-grow: 1; /* Permite que el contenedor crezca y ocupe el espacio disponible */
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #E0E0E0; /* Borde muy sutil para definición */
+}
+
+/* Estilos para encabezados (h1, h3, h5, h6) */
+h1, h3, h5, h6 {
+    color: #222222; /* Negro casi puro para los títulos sobre blanco */
+    margin-bottom: 0.5rem;
+    font-weight: 600; /* Un poco más de peso para destacar */
+}
+
+h1 {
+    font-size: 2.5rem; /* Tamaño grande para el título principal */
+    background: linear-gradient(to right, #6EE7B7, #3B82F6); /* Degradado en el texto (se mantiene) */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.25rem;
+}
+
+p {
+    color: #666666; /* Color de texto secundario más suave y legible sobre blanco */
+    line-height: 1.6;
+}
+
+a {
+    color: #3B82F6; /* Color de enlace que contraste (azul principal) */
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: #2563EB; /* Cambio de color al pasar el ratón */
+}
+
+/*
+ * -----------------------------------------------------------------------------
+ * Header
+ * -----------------------------------------------------------------------------
+ */
+.header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #EEEEEE; /* Borde inferior sutil */
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap; /* Permite que los elementos se envuelvan en pantallas pequeñas */
+    gap: 1rem; /* Espacio entre elementos */
+}
+
+.text-container {
+    flex-grow: 1;
+}
+
+.profile-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem; /* Espacio entre botón y avatar */
+    position: relative; /* Para posicionar el menú de usuario */
+}
+
+.btn-volver {
+    padding: 0.75rem 1.25rem;
+    background-color: #3B82F6; /* Azul vibrante */
+    color: white;
+    border: none;
+    border-radius: 0.75rem; /* Bordes redondeados */
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); /* Sombra para el botón */
+}
+
+.btn-volver:hover {
+    background-color: #2563EB; /* Azul más oscuro al pasar el ratón */
+    transform: translateY(-2px); /* Efecto de elevación */
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+}
+
+.user-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid #A57BFF; /* Borde morado sutil para el icono de usuario */
+    transition: transform 0.2s ease, border-color 0.3s ease;
+    display: flex; /* Para centrar la inicial */
+    align-items: center;
+    justify-content: center;
+    background-color: #3B82F6; /* Fondo azul para la inicial si no hay foto */
+    color: white; /* Color de texto para la inicial */
+    font-weight: bold;
+    font-size: 1.2rem;
+    position: relative; /* Para posicionar la imagen y la inicial */
+}
+
+.user-icon:hover {
+    transform: scale(1.05);
+    border-color: #70B3FF; /* Azul al pasar el ratón */
+}
+
+.user-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute; /* Para superponer sobre el fondo de la inicial */
+    top: 0;
+    left: 0;
+}
+
+.user-icon .user-initial {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    /* Estilos definidos en .user-icon para color y tamaño de fuente */
+}
+
+
+.user-menu {
+    position: absolute;
+    top: 100%; /* Debajo del icono de usuario */
+    right: 0;
+    background-color: #FFFFFF; /* Fondo blanco para el menú de usuario */
+    border-radius: 0.75rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+    min-width: 150px;
+    z-index: 10; /* Asegura que esté por encima de otros elementos */
+    opacity: 1; /* Por defecto visible, el JS maneja 'hidden' */
+    transform: translateY(10px); /* Ligeramente desplazado hacia abajo */
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    border: 1px solid #E0E0E0;
+}
+
+.user-menu.hidden {
+    opacity: 0;
+    pointer-events: none; /* Deshabilita interacciones cuando está oculto */
+    transform: translateY(0);
+}
+
+.user-menu p {
+    color: #333333;
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+}
+
+.user-menu button {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    background-color: #EF4444; /* Rojo para cerrar sesión */
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+}
+
+.user-menu button:hover {
+    background-color: #DC2626;
+}
+
+/*
+ * -----------------------------------------------------------------------------
+ * Contenido Principal: Filtros y Estadísticas Rápidas
+ * -----------------------------------------------------------------------------
+ */
+.main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem; /* Espacio entre secciones principales */
+    flex-grow: 1;
+}
+
+.filtros-section {
+    background-color: #FFFFFF; /* Fondo blanco para los filtros */
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease; /* Transición para ocultar/mostrar */
+    border: 1px solid #EEEEEE; /* Borde sutil */
+}
+
+.filtros-container {
+    display: flex;
+    flex-wrap: wrap; /* Permite que los filtros se envuelvan */
+    gap: 1.25rem; /* Espacio entre grupos de filtros */
+    align-items: flex-end; /* Alinea los elementos al final */
+}
+
+.filtro-grupo {
+    display: flex;
+    flex-direction: column;
+    flex: 1; /* Permite que los grupos de filtro se expandan */
+    min-width: 150px; /* Ancho mínimo para cada filtro */
+}
+
+.filtro-grupo label {
+    color: #666666; /* Color de label oscuro */
+    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+}
+
+.filtros-section input[type="date"],
+.filtros-section select {
+    padding: 0.75rem 1rem;
+    border: 1px solid #D0D0D0; /* Borde gris claro */
+    border-radius: 0.5rem;
+    background-color: #F8F8F8; /* Fondo blanco muy ligero para inputs */
+    color: #333333; /* Texto oscuro para el input */
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    width: 100%; /* Asegura que ocupe todo el ancho disponible */
+}
+
+.filtros-section input[type="date"]:focus,
+.filtros-section select:focus {
+    border-color: #3B82F6; /* Resplandor azul al enfocar */
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* Estilo para las flechas de los select en navegadores WebKit */
+.filtros-section select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="%23666666" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>'); /* Flecha gris oscuro */
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 1.5em;
+    padding-right: 2.5rem; /* Espacio para el icono */
+}
+
+
+.btn-filtrar, .btn-limpiar {
+    padding: 0.75rem 1.25rem;
+    border: none;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    flex-shrink: 0; /* Evita que los botones se encojan */
+    margin-top: 1rem; /* Espacio superior para separar de los inputs en móviles */
+}
+
+.btn-filtrar {
+    background-color: #6EE7B7; /* Verde/azul claro */
+    color: #FFFFFF; /* Texto blanco en botón de acento */
+    box-shadow: 0 4px 15px rgba(110, 231, 183, 0.4);
+}
+
+.btn-filtrar:hover {
+    background-color: #34D399;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(110, 231, 183, 0.6);
+}
+
+.btn-limpiar {
+    background-color: #E0E0E0; /* Gris claro para limpiar */
+    color: #4A4A4A; /* Texto oscuro */
+    box-shadow: 0 4px 15px rgba(224, 224, 224, 0.4);
+}
+
+.btn-limpiar:hover {
+    background-color: #C0C0C0;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(192, 192, 192, 0.6);
+}
+
+/* Estadísticas Rápidas */
+.stats-rapidas {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background-color: #FFFFFF; /* Fondo blanco para estadísticas */
+    border-radius: 1rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    transition: all 0.3s ease;
+    border: 1px solid #EEEEEE; /* Borde sutil */
+}
+
+.stat-rapida {
+    flex: 1; /* Permite que cada estadística ocupe espacio equitativo */
+    min-width: 120px; /* Ancho mínimo */
+    padding: 1rem;
+    border-radius: 0.75rem;
+    background-color: #F8F8F8; /* Fondo blanco muy ligero para cada tarjeta de estadística */
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* Sombra interna sutil */
+    transition: transform 0.2s ease;
+    border: 1px solid #E5E5E5; /* Borde sutil */
+}
+
+.stat-rapida:hover {
+    transform: translateY(-5px); /* Efecto de elevación al pasar el ratón */
+}
+
+.stat-numero {
+    font-size: 2.25rem; /* Tamaño grande para el número */
+    font-weight: 700;
+    color: #3B82F6; /* Color de acento azul para los números */
+    margin-bottom: 0.25rem;
+    text-shadow: 0 0 5px rgba(59, 130, 246, 0.3); /* Efecto de brillo */
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #666666; /* Color de label oscuro */
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/*
+ * -----------------------------------------------------------------------------
+ * Tabla de Historial
+ * -----------------------------------------------------------------------------
+ */
+.historial-container {
+    background-color: #FFFFFF; /* Fondo blanco para la tabla */
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    overflow-x: auto; /* Permite desplazamiento horizontal en pantallas pequeñas */
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #EEEEEE; /* Borde sutil */
+}
+
+.historial-table {
+    width: 100%;
+    border-collapse: separate; /* Permite bordes redondeados en celdas */
+    border-spacing: 0 0.75rem; /* Espacio vertical entre filas */
+    min-width: 700px; /* Ancho mínimo para la tabla */
+}
+
+.historial-table thead th {
+    background-color: #F0F0F0; /* Fondo de encabezado de tabla gris muy claro */
+    color: #4A4A4A; /* Texto oscuro para el encabezado */
+    padding: 1rem 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid #3B82F6; /* Borde inferior azul para encabezado */
+}
+
+/* Redondear las esquinas de los th del thead */
+.historial-table thead th:first-child {
+    border-top-left-radius: 0.75rem;
+    border-bottom-left-radius: 0.75rem;
+}
+.historial-table thead th:last-child {
+    border-top-right-radius: 0.75rem;
+    border-bottom-right-radius: 0.75rem;
+}
+
+
+.historial-table tbody tr {
+    background-color: #F8F8F8; /* Fondo blanco muy ligero para cada fila */
+    border-radius: 0.75rem; /* Bordes redondeados para cada fila */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Sombra para cada fila más sutil */
+    border: 1px solid #E5E5E5; /* Borde sutil más claro */
+}
+
+.historial-table tbody tr:hover {
+    transform: translateY(-3px); /* Efecto de elevación al pasar el ratón */
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+.historial-table tbody td {
+    padding: 1rem 0.75rem;
+    color: #4A4A4A; /* Color de texto oscuro */
+    font-size: 0.9rem;
+    vertical-align: middle; /* Alineación vertical del contenido */
+    border-top: 1px solid #F0F0F0; /* Separador muy sutil */
+    border-bottom: 1px solid #F0F0F0;
+}
+
+/* Redondear las esquinas de los td de cada fila */
+.historial-table tbody tr td:first-child {
+    border-top-left-radius: 0.75rem;
+    border-bottom-left-radius: 0.75rem;
+}
+.historial-table tbody tr td:last-child {
+    border-top-right-radius: 0.75rem;
+    border-bottom-right-radius: 0.75rem;
+}
+
+
+/* Estilos específicos para celdas */
+.vuelo-info strong, .ruta-info strong {
+    color: #3B82F6; /* Azul para resaltar */
+    font-weight: 700;
+}
+
+.vuelo-info small {
+    display: block;
+    font-size: 0.8em;
+    color: #777777; /* Color más suave para texto pequeño */
+}
+
+.badge {
+    padding: 0.3rem 0.7rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    white-space: nowrap; /* Evita que el texto del badge se rompa */
+}
+
+.riesgo-bajo {
+    background-color: #D4EDDA; /* Verde pastel muy claro */
+    color: #155724; /* Texto verde oscuro */
+}
+
+.riesgo-medio {
+    background-color: #FFF3CD; /* Amarillo pastel muy claro */
+    color: #856404; /* Texto amarillo oscuro */
+}
+
+.riesgo-alto {
+    background-color: #F8D7DA; /* Rojo pastel muy claro */
+    color: #721C24; /* Texto rojo oscuro */
+}
+
+.probabilidad-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.mini-bar {
+    width: 100%;
+    height: 6px;
+    background-color: #E0E0E0; /* Fondo de barra gris claro */
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 0.4rem;
+}
+
+.mini-fill {
+    height: 100%;
+    background: linear-gradient(to right, #6EE7B7, #3B82F6); /* Degradado para la barra */
+    border-radius: 3px;
+    transition: width 0.5s ease-in-out;
+}
+
+.clima-mini {
+    font-size: 0.85em;
+    color: #777777; /* Texto de clima oscuro */
+}
+
+.clima-mini span {
+    display: block;
+    margin-bottom: 0.2em;
+}
+
+.btn-ver-detalles {
+    padding: 0.6rem 1rem;
+    background-color: #3B82F6;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-ver-detalles:hover {
+    background-color: #2563EB;
+    transform: translateY(-2px);
+}
+
+/*
+ * -----------------------------------------------------------------------------
+ * Estado de Carga y Vacío
+ * -----------------------------------------------------------------------------
+ */
+.loading-container, .historial-vacio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    text-align: center;
+    gap: 1rem;
+}
+
+.loading-spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1); /* Borde de spinner oscuro sutil */
+    border-top: 4px solid #3B82F6; /* Color de carga azul */
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.historial-vacio h3 {
+    font-size: 1.8rem;
+    color: #333333; /* Texto oscuro para el título vacío */
+}
+
+.historial-vacio p {
+    color: #666666; /* Texto de vacío oscuro */
+    max-width: 400px;
+}
+
+/*
+ * -----------------------------------------------------------------------------
+ * Paginación
+ * -----------------------------------------------------------------------------
+ */
+.paginacion {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.paginacion button {
+    padding: 0.75rem 1.5rem;
+    background-color: #F0F0F0; /* Fondo de botón de paginación gris claro */
+    color: #4A4A4A; /* Texto oscuro */
+    border: none;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.paginacion button:hover:not(:disabled) {
+    background-color: #E0E0E0; /* Hover más oscuro */
+    transform: translateY(-2px);
+}
+
+.paginacion button:disabled {
+    background-color: #F8F8F8; /* Deshabilitado más claro */
+    color: #AAAAAA; /* Texto deshabilitado más claro */
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.paginacion #info-pagina {
+    color: #666666; /* Texto de información de página oscuro */
+    font-size: 1rem;
+}
+
+/*
+ * -----------------------------------------------------------------------------
+ * Modal de Detalles
+ * -----------------------------------------------------------------------------
+ */
+.modal {
+    position: fixed;
+    z-index: 100; /* Alto z-index para estar sobre todo */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto; /* Permite desplazamiento si el contenido es grande */
+    background-color: rgba(0, 0, 0, 0.4); /* Fondo semi-transparente, más claro */
+    display: flex;
+    align-items: center; /* Centrar verticalmente */
+    justify-content: center; /* Centrar horizontalmente */
+    backdrop-filter: blur(4px); /* Efecto de desenfoque en el fondo */
+    transition: opacity 0.3s ease;
+}
+
+.modal.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.modal-content {
+    background-color: #FFFFFF; /* Fondo blanco limpio del modal */
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+    width: 90%;
+    max-width: 700px; /* Ancho máximo para el modal */
+    position: relative;
+    transform: translateY(0); /* Para la animación de entrada */
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    border: 1px solid #E0E0E0; /* Borde sutil */
+}
+
+/* Animación de entrada para el modal */
+.modal:not(.hidden) .modal-content {
+    animation: modal-fade-in 0.3s ease-out;
+}
+
+@keyframes modal-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #F0F0F0; /* Borde muy sutil */
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.8rem;
+    color: #222222; /* Texto oscuro para el título */
+}
+
+.modal-close {
+    color: #888888; /* Color de la 'x' gris oscuro */
+    font-size: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.modal-close:hover,
+.modal-close:focus {
+    color: #EF4444; /* Rojo al pasar el ratón */
+    text-decoration: none;
+}
+
+.modal-body {
+    max-height: 70vh; /* Altura máxima del cuerpo del modal */
+    overflow-y: auto; /* Permite desplazamiento interno si el contenido es largo */
+    padding-right: 0.5rem; /* Espacio para la barra de desplazamiento */
+}
+
+/* Estilos para la barra de desplazamiento en el modal (Webkit) */
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: #F0F0F0; /* Track muy claro */
+    border-radius: 10px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #BBBBBB; /* Thumb gris */
+    border-radius: 10px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #999999;
+}
+
+
+/*
+ * -----------------------------------------------------------------------------
+ * Detalles de la Predicción en Modal
+ * -----------------------------------------------------------------------------
+ */
+.detalle-prediccion {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.detalle-section {
+    background-color: #F8F8F8; /* Fondo blanco muy ligero para secciones de detalle */
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
+    border: 1px solid #E5E5E5; /* Borde sutil */
+}
+
+.detalle-section h5 {
+    color: #3B82F6; /* Color de acento azul para títulos de sección */
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px dashed #E0E0E0; /* Borde sutil */
+    padding-bottom: 0.5rem;
+}
+
+.detalle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Columnas adaptables */
+    gap: 1rem;
+}
+
+.detalle-grid div {
+    color: #4A4A4A; /* Texto de detalles oscuro */
+    font-size: 0.95rem;
+}
+
+.prediccion-resultado {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap; /* Para responsividad */
+}
+
+.riesgo-grande {
+    font-size: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 1rem;
+    font-weight: 700;
+    min-width: 150px;
+    text-align: center;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+}
+
+.riesgo-grande.riesgo-bajo { background-color: #D4EDDA; color: #155724; }
+.riesgo-grande.riesgo-medio { background-color: #FFF3CD; color: #856404; }
+.riesgo-grande.riesgo-alto { background-color: #F8D7DA; color: #721C24; }
+
+.probabilidades {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.probabilidades div {
+    color: #4A4A4A; /* Texto de probabilidades oscuro */
+    font-size: 1rem;
+}
+
+.clima-detalle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+
+.clima-origen, .clima-destino {
+    flex: 1;
+    min-width: 250px;
+    background-color: #F8F8F8; /* Fondo de clima blanco muy ligero */
+    padding: 1rem;
+    border-radius: 0.75rem;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
+    border: 1px solid #E5E5E5; /* Borde sutil */
+}
+
+.clima-origen h6, .clima-destino h6 {
+    color: #333333; /* Texto oscuro para subtítulos de clima */
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.clima-origen ul, .clima-destino ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.clima-origen ul li, .clima-destino ul li {
+    color: #666666; /* Texto de lista de clima oscuro */
+    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+}
+
+.recomendaciones-lista {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.recomendaciones-lista li {
+    background-color: #F8F8F8; /* Fondo de recomendación blanco muy ligero */
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.5rem;
+    border-left: 4px solid #3B82F6; /* Barra de color a la izquierda */
+    font-size: 0.95rem;
+    color: #4A4A4A; /* Texto de recomendación oscuro */
+    border: 1px solid #E5E5E5; /* Borde sutil */
+}
+
+.factores-riesgo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+.factor-item {
+    background-color: #F8F8F8; /* Fondo de factor de riesgo blanco muy ligero */
+    padding: 1rem;
+    border-radius: 0.75rem;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
+    border: 1px solid #E5E5E5; /* Borde sutil */
+}
+
+.factor-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.factor-badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 0.75rem;
+    font-weight: 700;
+    font-size: 0.8em;
+    text-transform: uppercase;
+}
+
+.factor-badge.nivel-bajo { background-color: #D4EDDA; color: #155724; }
+.factor-badge.nivel-medio { background-color: #FFF3CD; color: #856404; }
+.factor-badge.nivel-alto { background-color: #F8D7DA; color: #721C24; }
+
+.factor-valor {
+    color: #333333; /* Texto oscuro para el valor */
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.factor-descripcion {
+    color: #666666; /* Descripción de factor oscuro */
+    font-size: 0.9rem;
+}
+
+/*
+ * -----------------------------------------------------------------------------
+ * Mensajes de Error (sustituyendo alerts)
+ * -----------------------------------------------------------------------------
+ */
+.error-message {
+    /* Clases de Tailwind: fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md shadow-lg z-5000 */
+    /* Aseguramos que el z-index sea muy alto para que siempre sea visible */
+    z-index: 9999;
+    max-width: 400px;
+    word-wrap: break-word; /* Rompe palabras largas si es necesario */
+}
+
+/*
+ * -----------------------------------------------------------------------------
+ * Media Queries para Responsividad
+ * -----------------------------------------------------------------------------
+ */
+
+@media (max-width: 768px) {
+    .container {
+        margin: 1rem auto;
+        padding: 1rem;
+        border-radius: 1rem;
+    }
+
+    h1 {
+        font-size: 1.8rem;
+        text-align: center;
+        width: 100%;
+    }
+
+    .header-content {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .btn-volver {
+        margin-bottom: 1rem;
+    }
+
+    .filtros-container {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+
+    .filtro-grupo {
+        min-width: auto;
+        width: 100%;
+    }
+
+    .btn-filtrar, .btn-limpiar {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+
+    .stats-rapidas {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .historial-table {
+        min-width: auto; /* Permite que la tabla se encoja en móviles */
+    }
+
+    .historial-table thead th,
+    .historial-table tbody td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    /* Ajustes específicos para las columnas en móviles */
+    .historial-table tbody td:nth-child(1) { /* Fecha/Hora */
+        white-space: nowrap;
+    }
+    .historial-table tbody td:nth-child(2) { /* Vuelo */
+        white-space: nowrap;
+    }
+    .historial-table tbody td:nth-child(3) { /* Ruta */
+        white-space: nowrap;
+    }
+
+    .modal-content {
+        padding: 1.5rem;
+        width: 95%;
+    }
+
+    .modal-header h3 {
+        font-size: 1.5rem;
+    }
+
+    .modal-close {
+        font-size: 1.8rem;
+    }
+
+    .detalle-grid {
+        grid-template-columns: 1fr; /* Una columna en móviles */
+    }
+
+    .prediccion-resultado {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 1rem;
+    }
+
+    .clima-detalle {
+        flex-direction: column;
+    }
+
+    .clima-origen, .clima-destino {
+        min-width: auto;
+        width: 100%;
+    }
+
+    .factores-riesgo {
+        grid-template-columns: 1fr; /* Una columna en móviles */
+    }
+}

@@ -8,7 +8,7 @@ import joblib
 import firebase_admin
 from firebase_admin import credentials, db
 from procesamiento import preparar_features
-from entrenamiento import ModeloClimaVuelos
+from entrenamiento.entrenamiento import ModeloClimaVuelos
 
 # Cargar variables .env
 load_dotenv()

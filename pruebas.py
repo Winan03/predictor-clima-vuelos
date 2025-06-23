@@ -1,4 +1,4 @@
-from entrenamiento import ModeloClimaVuelos
+from entrenamiento.entrenamiento import ModeloClimaVuelos
 import pandas as pd
 import sys
 import io

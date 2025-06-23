@@ -5,7 +5,7 @@ Script de configuración inicial para el proyecto de predicción de vuelos
 
 import os
 import json
-from firebase_service import FirebaseService
+from service.firebase_service import FirebaseService
 
 def verificar_configuracion():
     """Verifica que toda la configuración esté en orden"""

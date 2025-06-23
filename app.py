@@ -1,13 +1,17 @@
-from flask import Flask, render_template, request, jsonify
+# Importaciones existentes + nuevas
+from flask import Flask, render_template, request, jsonify, session
 import joblib
+import json
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import requests
 import os
 from procesamiento import procesar_datos_clima, preparar_features, obtener_datos_clima_reales
-from entrenamiento import ModeloClimaVuelos
-from firebase_service import FirebaseService 
+from entrenamiento.entrenamiento import ModeloClimaVuelos
+from service.firebase_service import FirebaseService 
+from service.explicacion_service import ExplicadorPredicciones, generar_explicacion_simple
+from firebase_admin import db 
 
 app = Flask(__name__)
 
@@ -21,6 +25,14 @@ ahorro_estimado = 0
 
 # Inicializar Firebase Service
 firebase_service = FirebaseService()  
+
+explicador = ExplicadorPredicciones()
+
+# Agregamos el servicio de envio de emails por prediccion realizada
+from service.email_service import EmailService
+
+# Inicializar el servicio de email después de FirebaseService
+email_service = EmailService()
 
 # Cargar modelo entrenado desde S3 o local
 def cargar_modelo():
@@ -66,10 +78,105 @@ modelo = cargar_modelo()
 def index():
     return render_template('index.html')
 
+# ============= NUEVA RUTA PARA EL HISTORIAL =============
+@app.route('/historial')
+def historial_predicciones():
+    return render_template('historial.html')
+
+@app.route('/historial-predicciones/<user_id>', methods=['GET'])
+def obtener_historial_predicciones(user_id):
+    try:
+        print(f"🔥 UID recibido en ruta: {user_id}")
+        
+        # CORREGIDO: Usar _ en lugar de *
+        sanitized_user_id = user_id.replace('.', '_').replace('@', '_')
+        print(f"🔐 UID sanitizado: {sanitized_user_id}")
+        
+        predicciones_ref = db.reference(f'users/{sanitized_user_id}/flights')
+        todas_predicciones = predicciones_ref.get()
+        
+        print(f"📦 Predicciones crudas:", todas_predicciones)
+        
+        predicciones_usuario = []
+        
+        if todas_predicciones:
+            for flight_id, pred in todas_predicciones.items():
+                # Verificar que pred no sea None
+                if pred is None:
+                    continue
+                    
+                # Obtener timestamp correcto
+                timestamp = pred.get('timestamp')
+                if timestamp:
+                    try:
+                        # Si es timestamp en milliseconds
+                        if timestamp > 1e12:  # Mayor que 1 billion = milliseconds
+                            fecha_obj = datetime.fromtimestamp(timestamp/1000)
+                        else:  # Seconds
+                            fecha_obj = datetime.fromtimestamp(timestamp)
+                        timestamp_str = fecha_obj.isoformat()
+                    except:
+                        timestamp_str = pred.get('saved_at', datetime.now().isoformat())
+                else:
+                    timestamp_str = pred.get('saved_at', datetime.now().isoformat())
+                
+                predicciones_usuario.append({
+                    'id': flight_id,
+                    'origen': pred.get('origin', pred.get('origen', 'N/A')),
+                    'ciudad': pred.get('destination', pred.get('destino', 'N/A')),
+                    'fecha_hora': f"{pred.get('date', '')} {pred.get('time', '')}".strip(),
+                    'pasajeros': pred.get('pasajeros', 0),
+                    'costo': pred.get('costo', 0),
+                    'probabilidad_retraso': pred.get('probabilidad', 0),
+                    'probabilidad_puntual': 100 - pred.get('probabilidad', 0),
+                    'confianza': pred.get('confianza', 100),
+                    'riesgo': pred.get('riesgo', 'bajo'),
+                    'status': pred.get('status', 'lowRisk'),
+                    'numero_vuelo': pred.get('numero_vuelo', f"FLY-{flight_id[:6]}"),
+                    
+                    # Datos del clima - ajustados a tu estructura
+                    'datos_clima_origen': pred.get('clima_origen', {}),
+                    'datos_clima_destino': pred.get('clima_destino', {}),
+                    # También incluir para compatibilidad con el modal
+                    'datos_clima': pred.get('clima_destino', {}),
+                    
+                    'recomendaciones': pred.get('recomendaciones', [
+                        "Verificar condiciones meteorológicas antes del vuelo",
+                        "Llegar al aeropuerto con tiempo suficiente"
+                    ]),
+                    'timestamp': timestamp_str,
+                    'factores_riesgo': pred.get('factores_riesgo', [])
+                })
+        
+        # Ordenar por timestamp descendente
+        predicciones_usuario.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        
+        print(f"✅ Enviando {len(predicciones_usuario)} predicciones al frontend")
+        
+        return jsonify({
+            'success': True,
+            'predicciones': predicciones_usuario,
+            'total': len(predicciones_usuario)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo historial: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'predicciones': []
+        }), 500
+
+# ========================================================
+
 @app.route('/predecir', methods=['POST'])
 def predecir_retraso():
     """
-    Endpoint de predicción que guarda en Firebase y considera clima de origen y destino por separado.
+    Endpoint de predicción que guarda en Firebase, considera clima de origen y destino por separado,
+    Y AHORA TAMBIÉN ENVÍA NOTIFICACIONES POR EMAIL A LOS PASAJEROS + EXPLICACIONES
     """
     try:
         data = request.json
@@ -81,6 +188,7 @@ def predecir_retraso():
         pasajeros = data.get('pasajeros', 120)
         costo = data.get('costo', 100.0)
         user_id = data.get('user_id')
+        numero_vuelo = data.get('numero_vuelo')
 
         if not ciudad or not origen or not fecha or not hora:
             return jsonify({'error': 'Faltan datos requeridos: ciudad, origen, fecha, hora'}), 400
@@ -165,6 +273,7 @@ def predecir_retraso():
                 riesgo = "alto" if prob_retraso > 60 else "medio" if prob_retraso > 30 else "bajo"
                 confianza = max(probabilidad) * 100
 
+                # Preparar resultado base
                 resultado = {
                     'prediccion': bool(prediccion),
                     'probabilidad_retraso': prob_retraso,
@@ -180,9 +289,63 @@ def predecir_retraso():
                     'origen': origen,
                     'ciudad': ciudad,
                     'pasajeros': pasajeros,
-                    'costo': costo
+                    'costo': costo,
+                    'numero_vuelo': numero_vuelo,
+                    'timestamp': datetime.now().isoformat()
                 }
 
+                # ⭐ GENERAR EXPLICACIÓN DE LA PREDICCIÓN
+                try:
+                    print("🧠 Generando explicación de la predicción...")
+                    
+                    datos_para_explicacion = {
+                        'datos_clima_origen': datos_clima_origen,
+                        'datos_clima_destino': datos_clima_destino,
+                        'datos_clima': datos_clima  # clima combinado
+                    }
+                    
+                    datos_vuelo_para_explicacion = {
+                        'origen': origen,
+                        'ciudad': ciudad,
+                        'fecha': fecha,
+                        'hora': hora,
+                        'pasajeros': pasajeros,
+                        'costo': costo,
+                        'numero_vuelo': numero_vuelo
+                    }
+                    
+                    explicacion_completa = explicador.explicar_prediccion(
+                        datos_para_explicacion, 
+                        prob_retraso, 
+                        datos_vuelo_para_explicacion
+                    )
+                    
+                    explicacion_simple = generar_explicacion_simple(explicacion_completa)
+                    
+                    # ✅ AGREGAR EXPLICACIONES AL RESULTADO
+                    resultado['explicacion'] = explicacion_completa
+                    resultado['explicacion_simple'] = explicacion_simple
+                    resultado['tiene_explicacion'] = True
+                    
+                    print(f"✅ Explicación generada exitosamente")
+                    print(f"📋 Explicación simple: {explicacion_simple.get('mensaje_principal', 'N/A')}")
+                    
+                except Exception as e:
+                    print(f"⚠️ Error generando explicación: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    
+                    # Si falla la explicación, agregar una versión básica
+                    resultado['explicacion'] = None
+                    resultado['explicacion_simple'] = {
+                        'mensaje_principal': f"Predicción realizada - Riesgo {riesgo.upper()}",
+                        'factores_clave': ['Análisis basado en condiciones meteorológicas'],
+                        'recomendacion_principal': 'Verifique el estado de su vuelo antes de partir'
+                    }
+                    resultado['tiene_explicacion'] = False
+                    resultado['error_explicacion'] = str(e)
+
+                # Actualizar estadísticas globales
                 global contador_predicciones, retrasos_evitados, ahorro_estimado
                 contador_predicciones += 1
 
@@ -193,8 +356,10 @@ def predecir_retraso():
                 else:
                     resultado['ahorro_estimado'] = 0
 
+                # ⭐ GUARDAR EN FIREBASE PRIMERO
+                prediccion_id = None
                 try:
-                    firebase_service.guardar_prediccion_vuelo(
+                    prediccion_id = firebase_service.guardar_prediccion_vuelo(
                         ciudad=ciudad,
                         fecha=fecha,
                         hora=hora,
@@ -210,9 +375,49 @@ def predecir_retraso():
                     )
 
                     resultado['firebase_guardado'] = True
+                    resultado['prediccion_id'] = prediccion_id
                 except Exception as firebase_error:
                     print(f"⚠️ Error guardando en Firebase: {firebase_error}")
                     resultado['firebase_guardado'] = False
+
+                # ⭐ ENVIAR NOTIFICACIONES POR EMAIL A TODOS LOS PASAJEROS
+                email_resultado = None
+                if numero_vuelo:
+                    try:
+                        print(f"📤 Preparando envío de notificaciones para vuelo {numero_vuelo}")
+
+                        datos_para_email = resultado.copy()
+                        datos_para_email['datos_clima'] = datos_clima  # Clima combinado
+
+                        email_resultado = email_service.enviar_notificacion_vuelo(
+                            codigo_vuelo=numero_vuelo,
+                            prediccion_data=datos_para_email
+                        )
+
+                        print(f"📧 Resultado del envío de emails: {email_resultado}")
+                        resultado['notificacion_email'] = email_resultado
+
+                    except Exception as email_error:
+                        print(f"❌ Error enviando notificaciones por email: {email_error}")
+                        resultado['notificacion_email'] = {
+                            'success': False,
+                            'error': str(email_error)
+                        }
+                else:
+                    resultado['notificacion_email'] = {
+                        'success': False,
+                        'message': f'Número de vuelo no proporcionado. No se enviaron emails.'
+                    }
+
+                # ✅ AGREGAR CAMPOS ADICIONALES PARA EL FRONTEND
+                resultado['status'] = 'success'
+                resultado['mostrar_explicacion'] = True  # Señal para el frontend
+                
+                print("🚀 Resultado final preparado para envío:")
+                print(f"   - Predicción: {resultado['prediccion']}")
+                print(f"   - Probabilidad retraso: {resultado['probabilidad_retraso']:.1f}%")
+                print(f"   - Riesgo: {resultado['riesgo']}")
+                print(f"   - Tiene explicación: {resultado.get('tiene_explicacion', False)}")
 
                 return jsonify(resultado)
 
@@ -230,6 +435,35 @@ def predecir_retraso():
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'Error procesando solicitud: {str(e)}'}), 500
+
+# ============= ENDPOINT MANUAL PARA ENVIAR NOTIFICACIONES =============
+@app.route('/enviar-notificacion-vuelo', methods=['POST'])
+def enviar_notificacion_manual():
+    """
+    Endpoint para enviar notificaciones por email de forma manual
+    """
+    try:
+        data = request.json
+        codigo_vuelo = data.get('codigo_vuelo')
+        prediccion_data = data.get('prediccion_data')
+        
+        if not codigo_vuelo or not prediccion_data:
+            return jsonify({
+                'success': False,
+                'error': 'Faltan datos: codigo_vuelo y prediccion_data son requeridos'
+            }), 400
+        
+        resultado = email_service.enviar_notificacion_vuelo(codigo_vuelo, prediccion_data)
+        return jsonify(resultado)
+        
+    except Exception as e:
+        print(f"❌ Error en envío manual de notificaciones: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# ================================================================
 
 def analizar_factores_riesgo(datos_clima, fecha_hora):
     """
@@ -344,7 +578,7 @@ def generar_recomendaciones(datos_clima, prediccion_retraso):
     
     return recomendaciones
 
-# ============= NUEVOS ENDPOINTS PARA FIREBASE =============
+# ============= ENDPOINTS EXISTENTES DE FIREBASE =============
 @app.route('/firebase/test', methods=['GET'])
 def test_firebase():
     """Endpoint para probar la conexión con Firebase"""
@@ -377,7 +611,8 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'modelo_cargado': modelo is not None,
-        'firebase_conectado': firebase_service.initialized,  # <-- NUEVO
+        'firebase_conectado': firebase_service.initialized,
+        'email_service_disponible': email_service is not None,  # ⭐ NUEVO
         'timestamp': datetime.now().isoformat()
     })
 
@@ -461,6 +696,80 @@ def estadisticas():
             'timestamp': datetime.now().isoformat()
         })
 
+@app.route('/vuelos_programados', methods=['GET'])
+def vuelos_programados():
+    try:
+        ref = db.reference('vuelos_programados')
+        vuelos_raw = ref.get()
+
+        vuelos = []
+        if vuelos_raw:
+            for key, v in vuelos_raw.items():
+                vuelo = v.copy()
+                vuelo['id'] = key
+                vuelos.append(vuelo)
+
+        return jsonify(vuelos)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/tickets', methods=['GET'])
+def obtener_tickets():
+    try:
+        ref = firebase_service.db.reference('tickets') 
+        data = ref.get()
+        return jsonify(data if data else {})
+    except Exception as e:
+        print(f"❌ Error al obtener tickets: {e}")
+        return jsonify({'error': str(e)}), 500
+
+##================== ENDPOINTS DE EXPLICACIÓN DE PREDICCIÓN =================
+
+@app.route('/explicar-prediccion', methods=['POST'])
+def explicar_prediccion_endpoint():
+    """
+    Endpoint dedicado para obtener explicaciones de predicciones
+    """
+    try:
+        data = request.json
+        
+        # Datos requeridos
+        datos_clima_origen = data.get('datos_clima_origen', {})
+        datos_clima_destino = data.get('datos_clima_destino', {})
+        probabilidad_retraso = data.get('probabilidad_retraso', 0)
+        datos_vuelo = data.get('datos_vuelo', {})
+        
+        datos_para_explicacion = {
+            'datos_clima_origen': datos_clima_origen,
+            'datos_clima_destino': datos_clima_destino,
+            'datos_clima': data.get('datos_clima', {})
+        }
+        
+        explicacion_completa = explicador.explicar_prediccion(
+            datos_para_explicacion, 
+            probabilidad_retraso, 
+            datos_vuelo
+        )
+        
+        explicacion_simple = generar_explicacion_simple(explicacion_completa)
+        
+        return jsonify({
+            'success': True,
+            'explicacion_completa': explicacion_completa,
+            'explicacion_simple': explicacion_simple
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en endpoint de explicación: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'explicacion_simple': {
+                'mensaje_principal': 'Error generando explicación',
+                'factores_clave': ['No disponible'],
+                'recomendacion_principal': 'Consulte el estado de su vuelo'
+            }
+        }), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

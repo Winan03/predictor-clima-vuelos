@@ -1,772 +1,3 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Predictor de Retrasos de Vuelos</title>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            backdrop-filter: blur(10px);
-        }
-
-        /* Estilos para la sección de autenticación */
-        .auth-section {
-            padding: 60px 40px;
-            text-align: center;
-            background: linear-gradient(135deg, #4a6cf7 0%, #667eea 100%);
-            color: white;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .auth-section::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>') repeat;
-            animation: float 20s infinite linear;
-        }
-
-        @keyframes float {
-            0% { transform: translateX(0) translateY(0); }
-            100% { transform: translateX(-50px) translateY(-50px); }
-        }
-
-        .auth-container {
-            max-width: 400px;
-            margin: 0 auto;
-            position: relative;
-            z-index: 1;
-        }
-
-        .auth-container h2 {
-            font-size: 2.2rem;
-            margin-bottom: 10px;
-        }
-
-        .auth-container p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-            margin-bottom: 30px;
-        }
-
-        .auth-form {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 30px;
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .auth-form input {
-            width: 100%;
-            padding: 15px;
-            margin-bottom: 15px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.9);
-            color: #333;
-            font-size: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .auth-form input:focus {
-            outline: none;
-            border-color: #ffffff;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
-        }
-
-        .auth-form input::placeholder {
-            color: #666;
-        }
-
-        .auth-form button {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 2px solid rgba(255, 255, 255, 0.5);
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 15px;
-        }
-
-        .auth-form button:hover {
-            background: rgba(255, 255, 255, 0.3);
-            border-color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .auth-form a {
-            color: rgba(255, 255, 255, 0.9);
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
-
-        .auth-form a:hover {
-            color: white;
-            text-decoration: underline;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        #auth-loading {
-            text-align: center;
-            padding: 40px;
-        }
-
-        #auth-loading .loading-spinner {
-            display: inline-block;
-            width: 30px;
-            height: 30px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 15px;
-        }
-
-        /* Estilos para la aplicación principal */
-        .main-app {
-            display: block;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #4a6cf7 0%, #667eea 100%);
-            color: white;
-            padding: 40px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>') repeat;
-            animation: float 20s infinite linear;
-        }
-
-        .user-info {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            z-index: 2;
-        }
-
-        .user-info span {
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
-
-        .logout-btn {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 8px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: all 0.3s ease;
-        }
-
-        .logout-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            border-color: rgba(255, 255, 255, 0.5);
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-            position: relative;
-            z-index: 1;
-        }
-
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            padding: 40px;
-        }
-
-        .form-section {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-        }
-
-        .form-section:hover {
-            transform: translateY(-5px);
-        }
-
-        .results-section {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            display: none;
-            transition: all 0.3s ease;
-        }
-
-        .results-section.show {
-            display: block;
-            animation: slideIn 0.5s ease;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #333;
-            font-size: 0.95rem;
-        }
-
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e1e5e9;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            background: #f8f9fa;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #4a6cf7;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.1);
-        }
-
-        .predict-btn {
-            width: 100%;
-            background: linear-gradient(135deg, #4a6cf7 0%, #667eea 100%);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 10px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .predict-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(74, 108, 247, 0.3);
-        }
-
-        .predict-btn:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .loading-spinner {
-            display: none;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #ffffff3d;
-            border-top: 2px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .risk-indicator {
-            text-align: center;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-
-        .risk-bajo {
-            background: linear-gradient(135deg, #4CAF50, #45a049);
-            color: white;
-        }
-
-        .risk-medio {
-            background: linear-gradient(135deg, #FF9800, #F57C00);
-            color: white;
-        }
-
-        .risk-alto {
-            background: linear-gradient(135deg, #f44336, #d32f2f);
-            color: white;
-        }
-
-        .probability-bar {
-            background: #e0e0e0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 15px 0;
-            height: 20px;
-        }
-
-        .probability-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #4CAF50, #FF9800, #f44336);
-            transition: width 1s ease;
-            border-radius: 10px;
-        }
-
-        .weather-info {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-
-        .weather-card {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            border-left: 4px solid #4a6cf7;
-        }
-
-        .weather-card .value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #4a6cf7;
-        }
-
-        .weather-card .label {
-            font-size: 0.9rem;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .recommendations {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            border-left: 4px solid #4a6cf7;
-        }
-
-        .recommendations h3 {
-            color: #333;
-            margin-bottom: 15px;
-        }
-
-        .recommendations ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .recommendations li {
-            padding: 8px 0;
-            padding-left: 20px;
-            position: relative;
-        }
-
-        .recommendations li::before {
-            content: '✓';
-            position: absolute;
-            left: 0;
-            color: #4a6cf7;
-            font-weight: bold;
-        }
-
-        .stats-section {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            margin: 0 40px 40px 40px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
-
-        .stat-card {
-            text-align: center;
-            padding: 20px;
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            border-radius: 10px;
-            transition: transform 0.3s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-3px);
-        }
-
-        .stat-card .number {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #4a6cf7;
-            margin-bottom: 5px;
-        }
-
-        .stat-card .label {
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .error-message {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 4px solid #f44336;
-            margin: 20px 0;
-        }
-
-        .success-message {
-            background: #e8f5e8;
-            color: #2e7d32;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 4px solid #4caf50;
-            margin: 20px 0;
-        }
-
-        .warning-message {
-            background: #fff3e0;
-            color: #ef6c00;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 4px solid #ff9800;
-            margin: 20px 0;
-        }
-
-        .agregar-btn {
-            width: 100%;
-            background: #ffffff;
-            color: #4a6cf7;
-            border: 2px dashed #4a6cf7;
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
-        }
-
-        .agregar-btn:hover {
-            background: #f1f3f5;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(74, 108, 247, 0.15);
-        }
-
-        .vuelo-group {
-            background: #ffffff;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e1e5e9;
-            position: relative;
-        }
-
-        .vuelo-group.predicted {
-            border-color: #4caf50;
-            background: #f8fff8;
-        }
-
-        .vuelo-group h3 {
-            color: #4a6cf7;
-            margin-bottom: 15px;
-            font-size: 1.2rem;
-        }
-
-        .vuelo-group hr {
-            border: none;
-            height: 1px;
-            background: #e1e5e9;
-            margin: 15px 0;
-        }
-
-        .prediction-status {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-
-        .prediction-status.predicted {
-            background: #4caf50;
-            color: white;
-        }
-
-        .remove-flight-btn {
-            position: absolute;
-            top: 10px;
-            right: 50px;
-            background: #f44336;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 25px;
-            height: 25px;
-            cursor: pointer;
-            font-size: 16px;
-            line-height: 1;
-            transition: all 0.3s ease;
-        }
-
-        .remove-flight-btn:hover {
-            background: #d32f2f;
-            transform: scale(1.1);
-        }
-
-        @media (max-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr;
-                gap: 20px;
-                padding: 20px;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .header {
-                padding: 30px 20px;
-            }
-
-            .auth-section {
-                padding: 40px 20px;
-            }
-
-            .auth-container {
-                max-width: 100%;
-            }
-
-            .user-info {
-                position: relative;
-                top: auto;
-                right: auto;
-                justify-content: center;
-                margin-bottom: 20px;
-            }
-            
-            .stats-section {
-                margin: 0 20px 20px 20px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Sección de autenticación -->
-        <div class="auth-section" id="auth-section">
-            <div class="auth-container">
-                <h2>🔐 Iniciar Sesión</h2>
-                <p>Inicie sesión para acceder al predictor de vuelos</p>
-                <div id="auth-forms">
-                    <div class="auth-form" id="login-form">
-                        <input type="email" id="login-email" placeholder="Correo electrónico" required>
-                        <input type="password" id="login-password" placeholder="Contraseña" required>
-                        <button type="button" onclick="loginUser()">Iniciar Sesión</button>
-                        <p><a href="#" onclick="showRegisterForm()">¿No tienes cuenta? Regístrate</a></p>
-                    </div>
-                    <div class="auth-form hidden" id="register-form">
-                        <input type="email" id="register-email" placeholder="Correo electrónico" required>
-                        <input type="password" id="register-password" placeholder="Contraseña (mín. 6 caracteres)" required>
-                        <input type="password" id="register-confirm" placeholder="Confirmar contraseña" required>
-                        <button type="button" onclick="registerUser()">Registrarse</button>
-                        <p><a href="#" onclick="showLoginForm()">¿Ya tienes cuenta? Inicia sesión</a></p>
-                    </div>
-                </div>
-                <div id="auth-loading" class="hidden">
-                    <div class="loading-spinner"></div>
-                    <p>Procesando...</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Aplicación principal (oculta inicialmente) -->
-        <div class="main-app hidden" id="main-app">
-            <div class="header">
-                <div class="user-info">
-                    <span id="user-email"></span>
-                    <button onclick="logoutUser()" class="logout-btn">Cerrar Sesión</button>
-                </div>
-                <h1>🛩️ Predictor de Retrasos de Vuelos</h1>
-                <p>Sistema inteligente de predicción basado en condiciones climáticas</p>
-            </div>
-
-            <div class="main-content">
-                <div class="form-section">
-                    <form id="prediction-form">
-                        <div id="vuelos-container">
-                            <div class="vuelo-group" data-index="0">
-                                <h3>Vuelo 1</h3>
-                                <div class="form-group">
-                                    <label>Ciudad de Destino:</label>
-                                    <select id="ciudad" name="ciudad" required>
-                                        <option value="">Seleccionar ciudad...</option>
-                                        <option value="lima">Lima</option>
-                                        <option value="arequipa">Arequipa</option>
-                                        <option value="trujillo">Trujillo</option>
-                                        <option value="piura">Piura</option>
-                                        <option value="cajamarca">Cajamarca</option>
-                                        <option value="puno">Puno</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Fecha del Vuelo:</label>
-                                    <input type="date" id="fecha" name="fecha" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Hora del Vuelo:</label>
-                                    <input type="time" id="hora" name="hora" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Número estimado de pasajeros:</label>
-                                    <input type="number" id="pasajeros" name="pasajeros" min="1" value="120" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Costo estimado por pasajero (USD):</label>
-                                    <input type="number" id="costo" name="costo" min="1" value="100" required>
-                                </div>
-                                <hr>
-                            </div>
-                        </div>
-                        
-                        <button type="button" class="agregar-btn" onclick="agregarVuelo()">
-                            + Agregar otro vuelo
-                        </button>
-
-                        <button type="submit" class="predict-btn" id="predict-btn">
-                            <span class="loading-spinner" id="loading-spinner"></span>
-                            <span id="predict-btn-text">Predecir Retraso</span>
-                        </button>
-                    </form>
-                </div>
-
-                <div class="results-section" id="results-section">
-                    <h2>Resultado de la Predicción</h2>
-                    
-                    <div class="risk-indicator" id="risk-indicator">
-                        <div id="risk-text">Analizando...</div>
-                    </div>
-
-                    <div>
-                        <strong>Probabilidad de Retraso:</strong>
-                        <div class="probability-bar">
-                            <div class="probability-fill" id="probability-fill" style="width: 0%;"></div>
-                        </div>
-                        <div style="text-align: center; font-weight: bold;" id="probability-text">0%</div>
-                    </div>
-
-                    <div class="weather-info" id="weather-info">
-                        <!-- Datos climáticos se llenarán dinámicamente -->
-                    </div>
-
-                    <div class="recommendations" id="recommendations">
-                        <h3>Recomendaciones</h3>
-                        <ul id="recommendations-list">
-                            <!-- Recomendaciones se llenarán dinámicamente -->
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <div class="stats-section">
-                <h2>Estadísticas del Sistema</h2>
-                <div class="stats-grid" id="stats-grid">
-                    <div class="stat-card">
-                        <div class="number" id="predicciones-hoy">-</div>
-                        <div class="label">Predicciones Hoy</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="number" id="precision-modelo">-</div>
-                        <div class="label">Precisión del Modelo</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="number" id="retrasos-evitados">-</div>
-                        <div class="label">Retrasos Evitados</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="number" id="ahorro-estimado">-</div>
-                        <div class="label">Ahorro Estimado (USD)</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
         // ============= CONFIGURACIÓN DE FIREBASE =============
         const firebaseConfig = {
             // REEMPLAZA ESTOS VALORES CON TU CONFIGURACIÓN DE FIREBASE
@@ -796,13 +27,30 @@
             if (user) {
                 currentUser = user;
                 showMainApp();
-                document.getElementById('user-email').textContent = user.email;
+
+                const name = user.displayName || 'Usuario';
+                const photo = user.photoURL || '/static/default-profile.png';
+
+                document.getElementById('user-name').textContent = name;
+                document.getElementById('profile-pic').src = photo;
+
                 loadStats();
             } else {
                 currentUser = null;
                 showAuthSection();
             }
         });
+
+        function toggleAuthView() {
+            
+            showMainApp();
+        }
+
+        
+        function toggleUserMenu() {
+            const menu = document.getElementById('user-menu');
+            menu.classList.toggle('hidden');
+        }
 
         function showAuthSection() {
             document.getElementById('auth-section').classList.remove('hidden');
@@ -817,50 +65,153 @@
         function showLoginForm() {
             document.getElementById('login-form').classList.remove('hidden');
             document.getElementById('register-form').classList.add('hidden');
+
+            document.getElementById('auth-title').textContent = '🔐 Iniciar Sesión';
+            document.getElementById('auth-subtitle').textContent = 'Inicie sesión para acceder al predictor de vuelos';
         }
 
         function showRegisterForm() {
             document.getElementById('login-form').classList.add('hidden');
             document.getElementById('register-form').classList.remove('hidden');
+
+            document.getElementById('auth-title').textContent = '📝 Registro de Usuario';
+            document.getElementById('auth-subtitle').textContent = 'Cree una cuenta para usar el predictor de vuelos';
         }
 
         async function loginUser() {
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value.trim();
 
             if (!email || !password) {
                 showError('Por favor, complete todos los campos');
                 return;
             }
 
+            // Validación de formato de correo
+            if (!/^[a-zA-Z][a-zA-Z0-9_.+-]*@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$/.test(email)) {
+                showError('Ingrese un correo electrónico válido (ej: ejemplo@dominio.com).');
+                return;
+            }
+
+            // Validación de contraseña mínima
+            if (password.length < 6) {
+                showError('La contraseña debe tener al menos 6 caracteres.');
+                return;
+            }
+
+            if (!/[A-Za-z]/.test(password)) {
+                showError('La contraseña debe contener al menos una letra.');
+                return;
+            }
+
+            if (!/\d/.test(password)) {
+                showError('La contraseña debe contener al menos un número.');
+                return;
+            }
+
             showAuthLoading(true);
 
             try {
-                await auth.signInWithEmailAndPassword(email, password);
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+
+                const userName = user.displayName || email.split('@')[0];
+                document.getElementById('user-name').textContent = userName;
+                localStorage.setItem('userName', userName);
+
                 showSuccess('Inicio de sesión exitoso');
+                toggleAuthView();
             } catch (error) {
-                console.error('Error de login:', error);
-                showError(getAuthErrorMessage(error.code));
+                console.error('🔐 Error completo de login:', error);
+
+                if (error.code) {
+                    showError(getAuthErrorMessage(error.code));
+                } else if (error.message?.toLowerCase().includes("network")) {
+                    showError("Problema de red al iniciar sesión. Verifica tu conexión.");
+                } else if (error.message?.toLowerCase().includes("popup")) {
+                    showError("Error con el popup de autenticación. Intenta nuevamente.");
+                } else {
+                    showError("Error inesperado durante el login: " + (error.message || "sin mensaje."));
+                }
             } finally {
                 showAuthLoading(false);
             }
+
         }
 
-        async function registerUser() {
-            const email = document.getElementById('register-email').value;
-            const password = document.getElementById('register-password').value;
-            const confirmPassword = document.getElementById('register-confirm').value;
 
-            if (!email || !password || !confirmPassword) {
+        window.onload = () => {
+            const savedName = localStorage.getItem('userName');
+            if (savedName) {
+                document.getElementById('user-name').textContent = savedName;
+            }
+
+            document.getElementById('register-photo').addEventListener('change', function (event) {
+                const file = event.target.files[0];
+                const preview = document.getElementById('preview-photo');
+                if (file) {
+                    preview.src = URL.createObjectURL(file);
+                } else {
+                    preview.src = "/static/default-profile.png";
+                }
+            });
+        };
+
+
+        async function registerUser() {
+            const email = document.getElementById('register-email').value.trim();
+            const password = document.getElementById('register-password').value.trim();
+            const confirmPassword = document.getElementById('register-confirm').value.trim();
+            const nombre = document.getElementById('register-name').value.trim();
+            const username = document.getElementById('register-username').value.trim().toLowerCase();
+            const photoFile = document.getElementById('register-photo').files[0];
+
+            // Validación del nombre
+            const palabras = nombre.split(' ').filter(p => p.length > 0);
+            if (palabras.length < 4) {
+                showError('Por favor ingrese su nombre completo (ej: Ana María López Castillo).');
+                return;
+            }
+            if (palabras.length > 6) {
+                showError('Nombre muy largo: ingrese solo sus 2 nombres y 2 apellidos.');
+                return;
+            }
+            if (!/^[a-zA-ZÁÉÍÓÚÑáéíóúñ\s]+$/.test(nombre)) {
+                showError('El nombre solo debe contener letras y espacios (sin números ni símbolos).');
+                return;
+            }
+
+            // Validar campos básicos
+            if (!email || !password || !confirmPassword || !nombre || !username) {
                 showError('Por favor, complete todos los campos');
                 return;
             }
 
-            if (password.length < 6) {
-                showError('La contraseña debe tener al menos 6 caracteres');
+            // Validar correo
+            if (!/^[a-zA-Z][a-zA-Z0-9_.+-]*@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$/.test(email)) {
+                showError('Ingrese un correo electrónico válido (ej: ejemplo@dominio.com).');
                 return;
             }
 
+            // Validar username
+            if (!/^[a-zA-Z0-9_.-]{4,20}$/.test(username)) {
+                showError('El nombre de usuario debe tener entre 4 y 20 caracteres y solo letras, números o guiones.');
+                return;
+            }
+
+            // Validar contraseña
+            if (password.length < 6) {
+                showError('La contraseña debe tener al menos 6 caracteres.');
+                return;
+            }
+            if (!/[A-Za-z]/.test(password)) {
+                showError('La contraseña debe contener al menos una letra.');
+                return;
+            }
+            if (!/\d/.test(password)) {
+                showError('La contraseña debe contener al menos un número.');
+                return;
+            }
             if (password !== confirmPassword) {
                 showError('Las contraseñas no coinciden');
                 return;
@@ -869,15 +220,87 @@
             showAuthLoading(true);
 
             try {
-                await auth.createUserWithEmailAndPassword(email, password);
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                let photoURL = "/static/default-profile.png";
+
+                // ✅ SUBIDA DE IMAGEN CON MANEJO DE ERRORES DETALLADO
+                if (photoFile) {
+                    try {
+                        const storageRef = firebase.storage().ref();
+                        const userPhotoRef = storageRef.child(`users/${user.uid}/profile.jpg`);
+                        await userPhotoRef.put(photoFile);
+                        photoURL = await userPhotoRef.getDownloadURL();
+                    } catch (uploadError) {
+                        console.error("Error al subir imagen:", uploadError);
+                        showError("La cuenta se creó, pero no se pudo subir la imagen. Puedes intentarlo desde tu perfil más adelante.");
+                    }
+                }
+
+                await user.updateProfile({
+                    displayName: nombre,
+                    photoURL: photoURL
+                });
+
+                localStorage.setItem('userName', nombre);
+                localStorage.setItem('userPhoto', photoURL);
+                document.getElementById('user-name').textContent = nombre;
+                document.getElementById('profile-pic').src = photoURL;
+
                 showSuccess('Registro exitoso. Bienvenido!');
+                toggleAuthView();
+
             } catch (error) {
-                console.error('Error de registro:', error);
-                showError(getAuthErrorMessage(error.code));
+                console.error('⚠️ Error completo:', error);
+                const codigo = error?.code || 'error-desconocido';
+                showError(getAuthErrorMessage(codigo));
             } finally {
                 showAuthLoading(false);
             }
         }
+
+        function generarPasswordFuerte(longitud = 12) {
+            const caracteres = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?";
+            let password = "";
+            for (let i = 0; i < longitud; i++) {
+                password += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+            }
+
+            const input = document.getElementById('register-password');
+            const confirm = document.getElementById('register-confirm');
+            input.value = password;
+            confirm.value = password;
+        }
+
+
+        function togglePassword(inputId, iconElement) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                iconElement.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                iconElement.textContent = '👁️';
+            }
+        }
+
+        function mostrarBurbujaPrediccion(mensaje = "✅ Predicción hecha") {
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble-alert';
+            bubble.textContent = mensaje;
+
+            const icon = document.querySelector('.user-icon') || document.body;
+            icon.appendChild(bubble);
+
+            bubble.style.top = '-10px';
+            bubble.style.left = '50%';
+            bubble.style.transform = 'translateX(-50%)';
+
+            setTimeout(() => {
+                bubble.remove();
+            }, 2000);
+            }
+
 
         async function logoutUser() {
             try {
@@ -903,29 +326,27 @@
         }
 
         function getAuthErrorMessage(errorCode) {
-            switch (errorCode) {
-                case 'auth/user-not-found':
-                    return 'Usuario no encontrado';
-                case 'auth/wrong-password':
-                    return 'Contraseña incorrecta';
-                case 'auth/email-already-in-use':
-                    return 'El correo ya está registrado';
-                case 'auth/weak-password':
-                    return 'La contraseña es muy débil';
-                case 'auth/invalid-email':
-                    return 'Correo electrónico inválido';
-                default:
-                    return 'Error de autenticación: ' + errorCode;
-            }
-        }
+    if (!errorCode || typeof errorCode !== 'string') {
+        return 'Error desconocido. Intente nuevamente o revise la consola para más detalles.';
+    }
 
-        // ============= FUNCIONES DE LA APLICACIÓN PRINCIPAL =============
-        document.addEventListener('DOMContentLoaded', function() {
-            const fechaInput = document.getElementById('fecha');
-            if (fechaInput) {
-                fechaInput.min = new Date().toISOString().split('T')[0];
-            }
-        });
+        switch (errorCode) {
+            case 'auth/user-not-found':
+                return 'El usuario no está registrado.';
+            case 'auth/wrong-password':
+                return 'La contraseña es incorrecta.';
+            case 'auth/invalid-login-credentials':
+                return 'Correo o contraseña incorrectos.';
+            case 'auth/email-already-in-use':
+                return 'El correo ya está registrado.';
+            case 'auth/weak-password':
+                return 'La contraseña es muy débil.';
+            case 'auth/invalid-email':
+                return 'Correo electrónico inválido.';
+            default:
+                return `Error de autenticación no manejado. Código recibido: ${errorCode}`;
+        }
+    }
 
         function generarDatosVuelo() {
             const ciudades = ['lima', 'arequipa', 'trujillo', 'piura', 'cajamarca', 'puno'];
@@ -964,6 +385,7 @@
             };
         }
 
+
         function crearIdVuelo(ciudad, fecha, hora) {
             return `${ciudad}-${fecha}-${hora}`;
         }
@@ -973,67 +395,92 @@
             return vuelosPredichos.has(id);
         }
 
-        function marcarComoPredicho(ciudad, fecha, hora, vueloGroup) {
-            const id = crearIdVuelo(ciudad, fecha, hora);
-            vuelosPredichos.add(id);
-            
-            vueloGroup.classList.add('predicted');
-            const status = document.createElement('div');
-            status.className = 'prediction-status predicted';
-            status.textContent = '✓ Predicho';
-            vueloGroup.appendChild(status);
+        function marcarComoPredicho(ciudad, fecha, hora, divVuelo) {
+            // Añadir clase de estilo general al vuelo
+            divVuelo.classList.add("vuelo-predicho");
+
+            // Verifica si ya tiene botón, y si es así, no lo vuelve a agregar
+            if (divVuelo.querySelector(".toggle-btn")) return;
+
+            // Crear botón
+            const btnToggle = document.createElement("button");
+            btnToggle.textContent = "🔼 Ocultar detalles"; // texto inicial
+            btnToggle.className = "toggle-btn bonito";     // clase para estilos
+            btnToggle.type = "button";                     // importante para no disparar submit
+            btnToggle.style.marginTop = "10px";
+
+            // Agregar funcionalidad
+            btnToggle.onclick = () => {
+                const detalles = divVuelo.querySelectorAll(".form-group");
+                const ocultando = detalles[0].classList.contains("hidden");
+
+                detalles.forEach(el => el.classList.toggle("hidden"));
+                btnToggle.textContent = ocultando ? "🔼 Ocultar detalles" : "🔽 Mostrar detalles";
+            };
+
+            divVuelo.appendChild(btnToggle);
+        }
+
+        function obtenerNumeroVuelo(origen, destino) {
+            const vuelo = vuelosProgramados.find(v => v.origen === origen && v.destino === destino);
+            return vuelo ? vuelo.numero_vuelo : null;
         }
 
         // ============= MANEJO DEL FORMULARIO DE PREDICCIÓN =============
         document.getElementById('prediction-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            if (!currentUser) {
+
+            if (!currentUser || !currentUser.uid) {
                 showError('Debe iniciar sesión para realizar predicciones');
                 return;
             }
 
             const vuelosGroups = document.querySelectorAll('.vuelo-group');
-            let vueloSinPrediccion = null;
             let formData = null;
-            let indiceVuelo = -1;
+            let vueloTarget = null;
+            let indexVuelo = -1;
 
             for (let i = 0; i < vuelosGroups.length; i++) {
                 const group = vuelosGroups[i];
                 if (!group.classList.contains('predicted')) {
                     const inputs = group.querySelectorAll('input, select');
                     const data = {
-                        ciudad: inputs[0].value,
-                        fecha: inputs[1].value,
-                        hora: inputs[2].value,
-                        pasajeros: parseInt(inputs[3].value),
-                        costo: parseFloat(inputs[4].value),
-                        user_id: currentUser.uid // ← NUEVO: Agregar user_id
+                        origen: inputs[0].value,
+                        ciudad: inputs[1].value,
+                        fecha: inputs[2].value,
+                        hora: inputs[3].value,
+                        pasajeros: parseInt(inputs[4].value),
+                        costo: parseFloat(inputs[5].value),
+                        user_id: currentUser.uid,
+                        numero_vuelo: obtenerNumeroVuelo(inputs[0].value, inputs[1].value)
                     };
 
-                    if (!data.ciudad || !data.fecha || !data.hora) {
-                        showError('Por favor, complete todos los campos del vuelo ' + (i + 1));
+                    if (!data.origen || !data.ciudad || !data.fecha || !data.hora) {
+                        showError(`Complete todos los campos del Vuelo ${i + 1}`);
                         return;
                     }
 
-                    if (yaFuePredicho(data.ciudad, data.fecha, data.hora)) {
-                        showWarning(`El vuelo ${i + 1} (${data.ciudad.toUpperCase()} - ${data.fecha} ${data.hora}) ya fue predicho anteriormente.`);
+                    if (data.origen === data.ciudad) {
+                        showError(`❌ En el Vuelo ${i + 1}, la ciudad de origen y destino no pueden ser iguales.`);
                         return;
                     }
 
-                    vueloSinPrediccion = group;
+                    vueloTarget = group;
                     formData = data;
-                    indiceVuelo = i + 1;
+                    indexVuelo = i + 1;
                     break;
                 }
             }
 
-            if (!vueloSinPrediccion) {
-                showWarning('Todos los vuelos ya han sido predichos. Agregue un nuevo vuelo para realizar una nueva predicción.');
+
+            if (!formData) {
+                showWarning('Todos los vuelos ya fueron procesados');
                 return;
             }
 
-            console.log('Enviando datos:', formData);
+            const idVuelo = crearIdVuelo(formData.ciudad, formData.fecha, formData.hora);
+            const esRepetido = yaFuePredicho(formData.ciudad, formData.fecha, formData.hora);
+
             showLoading(true);
 
             try {
@@ -1046,33 +493,45 @@
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `Error HTTP: ${response.status}`);
+                    let mensajeError = `Error HTTP: ${response.status}`;
+                    try {
+                        const data = await response.json();
+                        mensajeError = data.error || mensajeError;
+                    } catch (e) {}
+                    throw new Error(mensajeError);
                 }
 
                 const result = await response.json();
-                
+
                 showResults(result);
-                marcarComoPredicho(formData.ciudad, formData.fecha, formData.hora, vueloSinPrediccion);
+                // ⭐️ Inicializar explicaciones visuales/textuales
+                //inicializarExplicacion(result);
+
+                mostrarBurbujaPrediccion(`✈️ ${formData.ciudad.toUpperCase()} predicho`);
+                inicializarExplicacion(result);
                 
-                let mensaje = `Predicción completada para el Vuelo ${indiceVuelo} (${formData.ciudad.toUpperCase()} - ${formData.fecha} ${formData.hora}).`;
-                if (result.ahorro_estimado > 0) {
-                    mensaje += ` Ahorro estimado: $${result.ahorro_estimado}`;
+                if (!esRepetido) {
+                    vuelosPredichos.add(idVuelo); // solo si no era repetido
+                    marcarComoPredicho(formData.ciudad, formData.fecha, formData.hora, vueloTarget);
+                    vueloTarget.classList.add('predicted');
                 }
-                if (result.firebase_guardado) {
-                    mensaje += ' ✅ Guardado en Firebase';
-                }
-                
+
+                let mensaje = `Vuelo ${indexVuelo} (${formData.ciudad.toUpperCase()} - ${formData.fecha} ${formData.hora}) procesado.`;
+                if (esRepetido) mensaje += ' ⚠️ Ya había sido predicho antes (pero se volvió a guardar).';
+                if (result.ahorro_estimado) mensaje += ` Ahorro estimado: $${result.ahorro_estimado}`;
+                if (result.firebase_guardado) mensaje += ' ✅ Guardado en Firebase';
+
                 showSuccess(mensaje);
                 loadStats();
-                
+
             } catch (error) {
-                console.error('Error de conexión:', error);
-                showError('Error de conexión: ' + error.message);
+                console.error('Error en predicción:', error);
+                showError(error.message);
             } finally {
                 showLoading(false);
             }
         });
+
 
         function showLoading(show) {
             const button = document.getElementById('predict-btn');
@@ -1096,6 +555,10 @@
             const riskText = document.getElementById('risk-text');
             const probabilityFill = document.getElementById('probability-fill');
             const probabilityText = document.getElementById('probability-text');
+
+            document.getElementById('placeholder-prediccion').style.display = 'none';
+            document.getElementById('resultado-prediccion').style.display = 'block';
+
 
             resultsSection.classList.add('show');
 
@@ -1166,6 +629,7 @@
 
             container.insertAdjacentHTML('beforeend', vueloHTML);
             showSuccess(`Nuevo vuelo agregado con hora única (${datosAleatorios.hora}). Ajuste los detalles según sea necesario.`);
+            configurarSelectsVuelos();
         }
 
         function eliminarVuelo(btn) {
@@ -1252,6 +716,14 @@
                 document.getElementById('ahorro-estimado').textContent = '$0';
             }
         }
+        // ============ INICIALIZACIÓN DE EXPLICACIONES =============
+        function inicializarExplicacion(result) {
+            if (window.procesarResultadoPrediccion) {
+                window.procesarResultadoPrediccion(result);
+            } else {
+                console.warn('Sistema de explicación no disponible');
+            }
+        }        
 
         // ============= FUNCIONES DE MENSAJES =============
         function showError(message) {
@@ -1259,19 +731,21 @@
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message';
             errorDiv.textContent = message;
-            
-            const targetContainer = document.getElementById('auth-section').classList.contains('hidden') 
-                ? document.querySelector('.form-section') 
+
+            const targetContainer = document.getElementById('auth-section').classList.contains('hidden')
+                ? document.querySelector('.form-section')
                 : document.querySelector('.auth-container');
-                
+
             targetContainer.appendChild(errorDiv);
-            
+            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
             setTimeout(() => {
                 if (errorDiv.parentNode) {
                     errorDiv.parentNode.removeChild(errorDiv);
                 }
             }, 5000);
         }
+
 
         function showSuccess(message) {
             removeExistingMessages();
@@ -1319,16 +793,6 @@
                 }
             });
         }
-
-        // ============= INICIALIZACIÓN =============
-        // Configurar fecha mínima al cargar la página
-        document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date().toISOString().split('T')[0];
-            const fechaInputs = document.querySelectorAll('input[type="date"]');
-            fechaInputs.forEach(input => {
-                input.min = today;
-            });
-        });
 
         // ============= MANEJO DE ERRORES GLOBALES =============
         window.addEventListener('error', function(e) {
@@ -1603,8 +1067,155 @@
             });
         }
 
-        // ============= INICIALIZACIÓN FINAL =============
+        // ============= FUNCIONES DE DESARROLLO (solo para testing) =============
+        function debugMode() {
+            console.log('=== DEBUG MODE ===');
+            console.log('Vuelos predichos:', Array.from(vuelosPredichos));
+            console.log('Contador vuelos:', contadorVuelos);
+            console.log('Usuario actual:', currentUser);
+            console.log('Modelo Firebase inicializado:', firebase.apps.length > 0);
+            console.log('Predicciones realizadas:', prediccionesRealizadas);
+            console.log('Ahorro acumulado:', ahorroAcumulado);
+        }
+
+        function configurarSelectsVuelos() {
+            const grupos = document.querySelectorAll('.vuelo-group');
+
+            grupos.forEach(grupo => {
+                const origen = grupo.querySelector('select[name="origen"]');
+                const destino = grupo.querySelector('select[name="ciudad"]');
+
+                // Verificar que ambos selects existan
+                if (!origen || !destino) return;
+
+                function sincronizarSelects() {
+                    const origenVal = origen.value;
+                    const destinoVal = destino.value;
+
+                    // Habilita todas las opciones primero
+                    Array.from(destino.options).forEach(op => op.disabled = false);
+                    Array.from(origen.options).forEach(op => op.disabled = false);
+
+                    // Si origen ya está seleccionado, deshabilita esa ciudad en el destino
+                    if (origenVal) {
+                        const opDestino = destino.querySelector(`option[value="${origenVal}"]`);
+                        if (opDestino) opDestino.disabled = true;
+                    }
+
+                    // Si destino ya está seleccionado, deshabilita esa ciudad en el origen
+                    if (destinoVal) {
+                        const opOrigen = origen.querySelector(`option[value="${destinoVal}"]`);
+                        if (opOrigen) opOrigen.disabled = true;
+                    }
+                }
+
+                // Remover event listeners existentes para evitar duplicados
+                origen.removeEventListener('change', sincronizarSelects);
+                destino.removeEventListener('change', sincronizarSelects);
+
+                // Agregar event listeners
+                origen.addEventListener('change', sincronizarSelects);
+                destino.addEventListener('change', sincronizarSelects);
+                sincronizarSelects(); // Inicializa
+            });
+        }
+
+        async function obtenerPasajerosDelVuelo(numeroVuelo) {
+            try {
+                const res = await fetch('/tickets');
+                const tickets = await res.json();
+                return Object.values(tickets).filter(t => t.vuelo?.numero_vuelo === numeroVuelo).length;
+            } catch (e) {
+                console.error('❌ No se pudo obtener pasajeros:', e);
+                return 100; // fallback
+            }
+        }
+
+
+        let vuelosProgramados = [];
+
+        async function cargarVuelosProgramados() {
+            try {
+                const response = await fetch('/vuelos_programados');
+                vuelosProgramados = await response.json();
+
+                // Obtener ciudades únicas de origen
+                const ciudadesOrigen = [...new Set(vuelosProgramados.map(v => v.origen.toLowerCase()))];
+
+                const origenSelect = document.querySelector('select[name="origen"]');
+                origenSelect.innerHTML = '<option value="">Seleccionar ciudad...</option>';
+                ciudadesOrigen.forEach(ciudad => {
+                    origenSelect.innerHTML += `<option value="${ciudad}">${capitalizarPrimeraLetra(ciudad)}</option>`;
+                });
+
+            } catch (error) {
+                console.error('❌ Error al cargar vuelos programados:', error);
+            }
+        }
+
+        document.addEventListener('change', async (e) => {
+            if (e.target.name === 'origen' || e.target.name === 'ciudad') {
+                const grupo = e.target.closest('.vuelo-group');
+                const origen = grupo.querySelector('select[name="origen"]').value;
+                const destinoSelect = grupo.querySelector('select[name="ciudad"]');
+                const destinoSeleccionado = destinoSelect.value;
+
+                // Filtrar vuelos según origen
+                const destinos = vuelosProgramados
+                    .filter(v => v.origen === origen)
+                    .map(v => v.destino.toLowerCase());
+
+                const destinosUnicos = [...new Set(destinos)];
+
+                // Rellenar destino
+                destinoSelect.innerHTML = '<option value="">Seleccionar ciudad...</option>';
+                destinosUnicos.forEach(ciudad => {
+                    destinoSelect.innerHTML += `<option value="${ciudad}" ${ciudad === destinoSeleccionado ? 'selected' : ''}>${capitalizarPrimeraLetra(ciudad)}</option>`;
+                });
+
+                // Si ya hay origen y destino seleccionados, buscar vuelo programado
+                const destino = grupo.querySelector('select[name="ciudad"]').value;
+                if (origen && destino) {
+                    const vuelo = vuelosProgramados.find(v => v.origen === origen && v.destino === destino);
+
+                    if (vuelo) {
+                        // Asignar valores a los campos si existen
+                        const fechaInput = grupo.querySelector('input[name="fecha"]');
+                        const partidaInput = grupo.querySelector('input[name="hora_partida"]');
+                        const llegadaInput = grupo.querySelector('input[name="hora_llegada"]');
+                        const costoInput = grupo.querySelector('input[name="costo"]');
+                        const pasajerosInput = grupo.querySelector('input[name="pasajeros"]');
+
+                        if (fechaInput) fechaInput.value = vuelo.fecha;
+                        if (partidaInput) partidaInput.value = vuelo.hora_partida;
+                        if (llegadaInput) llegadaInput.value = vuelo.hora_llegada;
+                        if (costoInput) costoInput.value = vuelo.precio;
+
+                        // Obtener pasajeros solo si existe input
+                        if (pasajerosInput) {
+                            const pasajeros = await obtenerPasajerosDelVuelo(vuelo.numero_vuelo);
+                            pasajerosInput.value = pasajeros;
+                        }
+                    }
+                }
+            }
+        });
+
+
+        // ============= INICIALIZACIÓN CONSOLIDADA =============
         document.addEventListener('DOMContentLoaded', function() {
+            // Configurar fecha mínima para todos los inputs de fecha
+            const today = new Date().toISOString().split('T')[0];
+            const fechaInputs = document.querySelectorAll('input[type="date"]');
+            fechaInputs.forEach(input => {
+                input.min = today;
+            });
+
+            cargarVuelosProgramados();
+
+            // Configurar selects de vuelos
+            configurarSelectsVuelos();
+
             // Inicializar monitoreo
             monitoreRRender();
             
@@ -1619,7 +1230,8 @@
                 // Ctrl + Enter para predecir
                 if (e.ctrlKey && e.key === 'Enter') {
                     e.preventDefault();
-                    document.getElementById('prediction-form').dispatchEvent(new Event('submit'));
+                    const form = document.getElementById('prediction-form');
+                    if (form) form.dispatchEvent(new Event('submit'));
                 }
                 
                 // Ctrl + N para nuevo vuelo
@@ -1642,21 +1254,8 @@
             console.log('   Ctrl + R: Limpiar formulario');
         });
 
-        // ============= FUNCIONES DE DESARROLLO (solo para testing) =============
-        function debugMode() {
-            console.log('=== DEBUG MODE ===');
-            console.log('Vuelos predichos:', Array.from(vuelosPredichos));
-            console.log('Contador vuelos:', contadorVuelos);
-            console.log('Usuario actual:', currentUser);
-            console.log('Modelo Firebase inicializado:', firebase.apps.length > 0);
-            console.log('Predicciones realizadas:', prediccionesRealizadas);
-            console.log('Ahorro acumulado:', ahorroAcumulado);
-        }
-
         // Hacer disponible para consola
         window.debugMode = debugMode;
         window.limpiarFormulario = limpiarFormulario;
         window.exportarResultados = exportarResultados;
         window.reiniciarEstadisticas = reiniciarEstadisticas;
-
-    </script>

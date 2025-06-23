@@ -12,112 +12,127 @@ class FirebaseService:
         """
         self.initialized = False
         self.init_firebase()
+        self.db = db 
     
     def init_firebase(self):
         """
-        Inicializa Firebase Admin SDK
+        Inicializa Firebase Admin SDK para Render y entorno local
         """
         try:
-            # Verificar si ya está inicializado
             if not firebase_admin._apps:
-                # Opción 1: Usar archivo JSON de credenciales
-                cred_path = os.getenv('FIREBASE_CREDENTIALS_PATH')
-                if cred_path and os.path.exists(cred_path):
-                    cred = credentials.Certificate(cred_path)
-                else:
-                    # Opción 2: Usar credenciales desde variable de entorno (JSON string)
-                    cred_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
-                    if cred_json:
-                        cred_dict = json.loads(cred_json)
-                        cred = credentials.Certificate(cred_dict)
-                    else:
-                        print("❌ No se encontraron credenciales de Firebase")
-                        return
-                
-                # URL de tu base de datos de Firebase
-                database_url = os.getenv('FIREBASE_DATABASE_URL', 'https://your-project-default-rtdb.firebaseio.com/')
-                
+                cred = None
+
+                # 🔒 1. Render: si tienes FIREBASE_PROJECT_ID y JSON
+                if os.getenv('FIREBASE_PROJECT_ID') and os.getenv('FIREBASE_PRIVATE_KEY'):
+                    cred_data = {
+                        "type": "service_account",
+                        "project_id": os.getenv("FIREBASE_PROJECT_ID"),
+                        "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
+                        "private_key": os.getenv("FIREBASE_PRIVATE_KEY").replace("\\n", "\n"),
+                        "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
+                        "client_id": os.getenv("FIREBASE_CLIENT_ID"),
+                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                        "token_uri": "https://oauth2.googleapis.com/token",
+                        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                        "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_CERT_URL")
+                    }
+                    cred = credentials.Certificate(cred_data)
+                    print("🌐 Usando credenciales desde variables de entorno (Render)")
+
+                # 💻 2. Local: si existe un path a JSON
+                elif os.getenv('FIREBASE_CREDENTIALS_PATH'):
+                    cred_path = os.getenv('FIREBASE_CREDENTIALS_PATH')
+                    if os.path.exists(cred_path):
+                        cred = credentials.Certificate(cred_path)
+                        print("💻 Usando credenciales desde archivo local")
+
+                if not cred:
+                    print("❌ No se encontraron credenciales de Firebase")
+                    return
+
                 firebase_admin.initialize_app(cred, {
-                    'databaseURL': database_url
+                    'databaseURL': os.getenv('FIREBASE_DATABASE_URL')
                 })
-            
+
             self.initialized = True
             print("✅ Firebase inicializado correctamente")
-            
+
         except Exception as e:
             print(f"❌ Error inicializando Firebase: {e}")
             self.initialized = False
+
     
     def guardar_prediccion_vuelo(self, ciudad, fecha, hora, resultado_prediccion, user_id=None):
         """
         Guarda una predicción de vuelo en Firebase
-        
-        Args:
-            ciudad (str): Ciudad destino
-            fecha (str): Fecha del vuelo (YYYY-MM-DD)
-            hora (str): Hora del vuelo (HH:MM)
-            resultado_prediccion (dict): Resultado completo de la predicción
-            user_id (str): ID del usuario (opcional)
-        
-        Returns:
-            bool: True si se guardó correctamente
         """
         if not self.initialized:
             print("❌ Firebase no está inicializado")
             return False
-        
+
         try:
             ref = db.reference()
             timestamp = int(datetime.now().timestamp() * 1000)
-            
-            # Estructura para vuelos_predichos
+
+            clima_destino = resultado_prediccion.get('datos_clima_destino', {})
+            clima_origen = resultado_prediccion.get('datos_clima_origen', {})
+
+            # Guardar predicción general
             vuelo_data = {
                 "probabilidad": resultado_prediccion.get('probabilidad_retraso', 0),
                 "riesgo": resultado_prediccion.get('riesgo', 'bajo'),
                 "status": self._get_status_from_riesgo(resultado_prediccion.get('riesgo', 'bajo')),
-                "clima": {
-                    "temperatura": resultado_prediccion.get('datos_clima', {}).get('temperatura', 0),
-                    "tmin": resultado_prediccion.get('datos_clima', {}).get('temperatura', 0) - 2,  # Estimado
-                    "tmax": resultado_prediccion.get('datos_clima', {}).get('temperatura', 0) + 2,  # Estimado
-                    "precipitacion": resultado_prediccion.get('datos_clima', {}).get('precipitacion', 0),
-                    "viento": resultado_prediccion.get('datos_clima', {}).get('viento_velocidad', 0),
-                    "presion": resultado_prediccion.get('datos_clima', {}).get('presion', 1013),
-                    "visibilidad": resultado_prediccion.get('datos_clima', {}).get('visibilidad', 10),
-                    "nubes": resultado_prediccion.get('datos_clima', {}).get('nubosidad', None)
-                },
+                "clima_origen": clima_origen,
+                "clima_destino": clima_destino,
                 "recomendaciones": resultado_prediccion.get('recomendaciones', []),
                 "generado_por": "modeloIA",
                 "timestamp": timestamp
             }
-            
-            # Guardar en vuelos_predichos
+
             vuelos_ref = ref.child('vuelos_predichos').child(ciudad).child(fecha).child(hora)
             vuelos_ref.set(vuelo_data)
-            
-            # Si hay user_id, también guardar en users
+
+            # Guardar historial por usuario si aplica
             if user_id:
                 flight_id = self._generate_flight_id(ciudad, fecha, hora, user_id)
+                
+                # IMPORTANTE: Usar la misma sanitización que en app.py
+                sanitized_user_id = user_id.replace('.', '_').replace('@', '_')
+                user_ref = ref.child('users').child(sanitized_user_id).child('flights').child(flight_id)
+
                 user_flight_data = {
                     "destination": ciudad,
+                    "origin": resultado_prediccion.get('origen', 'Lima'),  # Valor por defecto
                     "date": fecha,
                     "time": hora,
+                    "pasajeros": resultado_prediccion.get('pasajeros', 120),
+                    "costo": resultado_prediccion.get('costo', 100.0),
                     "probabilidad": resultado_prediccion.get('probabilidad_retraso', 0),
                     "riesgo": resultado_prediccion.get('riesgo', 'bajo'),
                     "status": self._get_status_from_riesgo(resultado_prediccion.get('riesgo', 'bajo')),
-                    "origin": "Lima",  # Puedes hacer esto dinámico
-                    "saved_at": datetime.now().isoformat()
+                    "saved_at": datetime.now().isoformat(),
+                    "timestamp": timestamp,
+                    "modificado_manualmente": False,
+                    "clima_origen": clima_origen,
+                    "clima_destino": clima_destino,
+                    "recomendaciones": resultado_prediccion.get('recomendaciones', []),
+                    "confianza": resultado_prediccion.get('confianza', 85.0),
+                    "numero_vuelo": resultado_prediccion.get('numero_vuelo', f'FLY-{flight_id[:6].upper()}'),
+                    "fecha_hora": f"{fecha} {hora}"
                 }
-                
-                user_ref = ref.child('users').child(user_id.replace('.', '_').replace('@', '_')).child('flights').child(flight_id)
+
                 user_ref.set(user_flight_data)
-            
+                print(f"✅ Datos guardados para usuario: {sanitized_user_id}")
+
             print(f"✅ Predicción guardada: {ciudad} - {fecha} {hora}")
             return True
-            
+
         except Exception as e:
             print(f"❌ Error guardando predicción: {e}")
+            import traceback
+            traceback.print_exc()
             return False
-    
+
     def actualizar_estadisticas(self, predicciones_hoy, precision_modelo, retrasos_evitados, ahorro_estimado):
         """
         Actualiza las estadísticas globales
@@ -233,3 +248,37 @@ class FirebaseService:
         except Exception as e:
             print(f"❌ Error en test de conexión: {e}")
             return False
+        
+    def obtener_ciudades_activas(self):
+        """
+        Extrae ciudades de origen y destino de los vuelos en los tickets confirmados.
+        Retorna una lista única y ordenada de ciudades activas.
+        """
+        if not self.initialized:
+            return []
+
+        try:
+            ref = db.reference('tickets')
+            tickets = ref.get()
+
+            ciudades = set()
+
+            if tickets:
+                for ticket_id, ticket_data in tickets.items():
+                    if ticket_data.get('estado', '').lower() == 'confirmado':
+                        vuelo = ticket_data.get('vuelo', {})
+                        origen = vuelo.get('origen', '').strip().lower()
+                        destino = vuelo.get('destino', '').strip().lower()
+
+                        if origen:
+                            ciudades.add(origen)
+                        if destino:
+                            ciudades.add(destino)
+
+            return sorted(ciudades)
+
+        except Exception as e:
+            print(f"❌ Error al obtener ciudades activas: {e}")
+            return []
+
+    
